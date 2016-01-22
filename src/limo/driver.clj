@@ -1,10 +1,9 @@
 (ns limo.driver
   (:require [environ.core :refer [env]]
-            [clojure.string :refer [lower-case]]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
-            [heat.taxi-extensions :as ext :refer [to delete-all-cookies current-url implicit-wait]]
-            [heat.config :as config])
+            [clojure.tools.logging :as log]
+            [limo.api :as api :refer [to delete-all-cookies current-url implicit-wait]])
   (:import org.openqa.selenium.remote.RemoteWebDriver
            org.openqa.selenium.remote.CapabilityType
            org.openqa.selenium.remote.DesiredCapabilities
@@ -21,25 +20,31 @@
            java.util.Date))
 
 (def normal-report clojure.test/report)
-(def ^:dynamic current-test-name nil)
 
-(defn- screencapture-report [m]
-  (when (#{:fail :error} (:type m))
-    (let [filename (if (:file m)
-                     (str (:file m) "/" "line-" (:line m) "/" current-test-name "-" (.getTime (Date.)))
-                     (str "unknown-files/" current-test-name "-" (.getTime (Date.))))]
-      (println "Saved screenshot to:" filename)
-      (ext/screenshot filename)
-      (doseq [driver (vals drivers)]
-        (doseq [entry (.. driver manage logs (get LogType/BROWSER))]
-          (println "[Console]" (.getTimestamp entry) (.getLevel entry) (.getMessage entry))))))
-  (when (= :begin-test-var (:type m))
-    (alter-var-root #'current-test-name (constantly (str (:name (meta (:var m)))))))
-  (normal-report m))
+(defn console-logs [driver]
+  (map (fn [entry]
+         {:timestamp (.getTimestamp entry)
+          :level (.getLevel entry)
+          :message (.getMessage entry)})
+       (.. driver manage logs (get LogType/BROWSER))))
 
-(defn auto-screenshot [f]
-  (binding [clojure.test/report screencapture-report]
-    (f)))
+(defn create-screenshot-reporter [reporter-fn]
+  (fn [m]
+    (when (#{:fail :error} (:type m))
+      (let [filename (if (:file m)
+                       (str (:file m) "/" "line-" (:line m) "/" (.getTime (Date.)))
+                       (str "unknown-files/" (.getTime (Date.))))]
+        (log/error "Saved screenshot to:" filename)
+        (api/screenshot filename)))
+    (normal-report m)))
+
+(defn create-console-log-reporter [reporter-fn drivers-fn]
+  (fn [m]
+    (when (#{:fail :error} (:type m))
+      (doseq [driver (drivers-fn)]
+        (doseq [entry (console-logs api/*driver*)]
+          (log/error "[Console]" entry))))
+    (normal-report m)))
 
 (def capabilities
   {:chrome (DesiredCapabilities/chrome)
@@ -67,3 +72,25 @@
 (defn create-remote
   ([desired-capabilities] (RemoteWebDriver. desired-capabilities))
   ([url desired-capabilities] (RemoteWebDriver. (io/as-url url) desired-capabilities)))
+
+(defn with-driver* [driver {:keys [quit?]} f]
+  (let [old-driver api/*driver*
+        result (atom nil)]
+    (api/set-driver! driver)
+    (try
+      (reset! result (f))
+      (finally
+        (when quit?
+          (.quit driver))
+        (api/set-driver! old-driver)))
+    @result))
+
+(defmacro with-driver [driver options & body]
+  {:pre [(map? options)]}
+  `(with-driver* ~driver ~options (fn [] ~@body)))
+
+(defn with-fresh-browser* [create-driver-fn f]
+  (with-driver* (create-driver-fn) {:quit? true} f))
+
+(defmacro with-fresh-browser [create-driver-fn & body]
+  `(with-fresh-browser* ~create-driver-fn (fn [] ~@body)))

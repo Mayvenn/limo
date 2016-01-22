@@ -1,9 +1,9 @@
-(ns limo.driver
+(ns limo.api
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [heat.config :as config])
+            [environ.core :refer [env]])
   (:import java.util.concurrent.TimeUnit
            org.openqa.selenium.By
            org.openqa.selenium.By$ByCssSelector
@@ -29,12 +29,19 @@
 (def ^:dynamic *default-timeout* 15000) ;; msec
 (def ^:dynamic is-waiting false)
 
+(defn set-driver! [d]
+  (when d
+    (alter-var-root #'*driver* (constantly d))))
+
 ;; Helpers
+
+(defmacro ^:private narrate [msg args]
+  `(when-let [m# ~msg]
+     (log/info m# ~@args)))
 
 (defn- wrap-narration [f msg]
   (fn [& args]
-    (when msg
-      (apply println msg (map pr-str args)))
+    (narrate msg (map pr-str args))
     (apply f args)))
 
 (defn- lower-case [s]
@@ -425,13 +432,18 @@
          output)
        output))))
 
-(defn- save-screenshot [name]
-  (let [f (io/file (config/screenshot-dir) name)]
+(defn- screenshot-dir [p]
+  (or (:circle-artifacts env)
+      "screenshots"))
+
+(defn- save-screenshot [name screenshot-dir]
+  (let [f (io/file (screenshot-dir) name)]
     (io/make-parents f)
     (take-screenshot :file f)))
 
-(defn screenshot [name]
-  (save-screenshot (str name ".png")))
+(defn screenshot
+  ([name] (screenshot name screenshot-dir))
+  ([name dir-f] (save-screenshot (str name ".png") dir-f)))
 
 ;; Window Size
 
