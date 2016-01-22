@@ -26,6 +26,7 @@
            org.openqa.selenium.support.ui.Select))
 
 (def ^:dynamic *driver* nil)
+(def ^:dynamic *default-timeout* 15000) ;; msec
 (def ^:dynamic is-waiting false)
 
 ;; Helpers
@@ -50,7 +51,7 @@
 (defn element? [e]
   (instance? WebElement e))
 
-(defn by
+(defn ^By by
   [s]
   (cond
     (element? s) (By/id (.getId s))
@@ -74,15 +75,19 @@
      (seq? selector-or-elements) selector-or-elements
      :else (.findElements driver (by selector-or-elements)))))
 
-(defn exists? [selector-or-element]
-  (boolean (element selector-or-element)))
+(defn exists?
+  ([selector-or-element] (exists? *driver* selector-or-element))
+  ([driver selector-or-element]
+   (boolean (element driver selector-or-element))))
 
 ;; Polling / Waiting
 
 (defn wait-until
-  ([pred] (wait-until pred 15000))
+  ([pred] (wait-until pred *default-timeout*))
   ([pred timeout]
    (wait-until *driver* pred timeout 0))
+  ([pred timeout interval]
+   (wait-until *driver* pred timeout interval))
   ([driver pred timeout interval]
    (if is-waiting
      (if-let [result (pred)]
@@ -97,7 +102,7 @@
          @return-value)))))
 
 (defn wait-until-clickable
-  ([selector] (wait-until-clickable *driver* selector 15000))
+  ([selector] (wait-until-clickable *driver* selector *default-timeout*))
   ([driver selector timeout]
    (let [wait (doto (WebDriverWait. driver (/ timeout 1000) 0)
                 (.ignoring StaleElementReferenceException))]
