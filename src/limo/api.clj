@@ -432,7 +432,7 @@
          output)
        output))))
 
-(defn- screenshot-dir [p]
+(defn- screenshot-dir []
   (or (:circle-artifacts env)
       "screenshots"))
 
