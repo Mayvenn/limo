@@ -36,7 +36,7 @@
                        (str "unknown-files/" (.getTime (Date.))))]
         (log/error "Saved screenshot to:" filename)
         (api/screenshot filename)))
-    (normal-report m)))
+    (reporter-fn m)))
 
 (defn create-console-log-reporter [reporter-fn drivers-fn]
   (fn [m]
@@ -44,7 +44,7 @@
       (doseq [driver (drivers-fn)]
         (doseq [entry (console-logs api/*driver*)]
           (log/error "[Console]" entry))))
-    (normal-report m)))
+    (reporter-fn m)))
 
 (defn map->capabilities [^java.util.Map m]
   (if (instance? DesiredCapabilities m)
