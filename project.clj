@@ -8,11 +8,6 @@
                  [org.seleniumhq.selenium/selenium-server "2.47.1"]
                  [org.seleniumhq.selenium/selenium-java "2.47.0"]
                  [environ "1.0.0"]]
-  :plugins [[s3-wagon-private "1.1.2"]]
-  :repositories [["releases" {:url "s3p://mayvenn-dependencies/releases/"
-                              :username :env
-                              :passphrase :env
-                              :sign-releases false}]]
   :profiles
   {:dev {:source-paths ["dev"]
          :dependencies [[pjstadig/humane-test-output "0.6.0"]
