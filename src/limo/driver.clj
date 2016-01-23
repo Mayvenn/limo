@@ -46,24 +46,27 @@
           (log/error "[Console]" entry))))
     (normal-report m)))
 
-(def capabilities
-  {:chrome (DesiredCapabilities/chrome)
-   :browser-stack {:samsung-galaxy-s4 (doto (DesiredCapabilities.)
-                                        (.setCapability CapabilityType/LOGGING_PREFS
-                                                        (doto (LoggingPreferences.)
-                                                          (.enable LogType/BROWSER Level/ALL)))
-                                        (.setCapability "browserName" "android")
-                                        (.setCapability "platform" "ANDROID")
-                                        (.setCapability "device" "Samsung Galaxy S4")
-                                        (.setCapability "browserstack.debug" "true"))}})
+(defn map->capabilities [^java.util.Map m]
+  (if (instance? DesiredCapabilities m)
+    m
+    (DesiredCapabilities. m)))
 
 (defn logging-capability
   ([desired-capabilities] (logging-capability desired-capabilities Level/ALL))
   ([desired-capabilities level]
-   (doto desired-capabilities
+   (doto (map->capabilities desired-capabilities)
      (.setCapability CapabilityType/LOGGING_PREFS
                      (doto (LoggingPreferences.)
                        (.enable LogType/BROWSER level))))))
+
+(def capabilities
+  {:chrome (DesiredCapabilities/chrome)
+   :browser-stack {:samsung-galaxy-s4 (doto (DesiredCapabilities.)
+                                        (logging-capability)
+                                        (.setCapability "browserName" "android")
+                                        (.setCapability "platform" "ANDROID")
+                                        (.setCapability "device" "Samsung Galaxy S4")
+                                        (.setCapability "browserstack.debug" "true"))}})
 
 (defn create-chrome
   ([] (create-chrome (:chrome capabilities)))
