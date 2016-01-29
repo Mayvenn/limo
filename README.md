@@ -11,12 +11,12 @@ Limo embraces its tight coupling to Selenium Webdriver. That means no wrapper ty
 Add your `project.clj` file:
 
 ```
-[limo "0.1.0"]
+[limo "0.1.1"]
 ```
 
 ## Usage
 
-Currently similar to [clj-webdriver](https://github.com/semperos/clj-webdriver).
+Currently similar to [clj-webdriver](https://github.com/semperos/clj-webdriver). Unlike clj-webdriver, all actions will poll and ignore stale element exceptions for 15 seconds (by default).
 
 ## License
 
