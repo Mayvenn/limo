@@ -85,7 +85,9 @@
 (defn exists?
   ([selector-or-element] (exists? *driver* selector-or-element))
   ([driver selector-or-element]
-   (boolean (element driver selector-or-element))))
+   (try
+     (not (= nil (element driver selector-or-element)))
+     (catch org.openqa.selenium.NoSuchElementException _ false))))
 
 ;; Polling / Waiting
 
