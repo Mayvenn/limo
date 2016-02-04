@@ -396,10 +396,6 @@
    (fill-form* fields)
    (apply fill-form* more-fields)))
 
-(defn quick-fill-submit [& fields]
-  (println "quick-fill-submit" (pr-str fields))
-  (apply fill-form* fields))
-
 (defn fill-form
   ([fields1 fields2 & more-fields]
    (fill-form fields1)
