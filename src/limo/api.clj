@@ -358,6 +358,12 @@
    (wait-for-else ["assert num-elements=" selector-or-element expected-count] false
                   (= (count (elements selector-or-element)) expected-count))))
 
+(defn element-matches
+  ([selector-or-element pred] (element-matches *driver* selector-or-element pred))
+  ([driver selector-or-element pred]
+   (wait-for-else ["match element with pred" selector-or-element] false
+                  (pred (element selector-or-element)))))
+
 ;; Actions based on queries on elements
 
 (defn click-when-visible [selector]
