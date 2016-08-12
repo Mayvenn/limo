@@ -151,6 +151,14 @@
   ([] (delete-all-cookies *driver*))
   ([driver] (.. driver manage deleteAllCookies)))
 
+(defn switch-to
+  ([iframe-element] (switch-to *driver* iframe-element))
+  ([driver iframe-element] (.. driver (switchTo) (frame iframe-element))))
+
+(defn switch-to-main-page
+  ([] (switch-to-main-page *driver*))
+  ([driver] (.. driver switchTo defaultContent)))
+
 ;; Act on Element
 
 (defn scroll-to
@@ -294,6 +302,16 @@
   ([^WebDriver driver]
    (println "current-url")
    (.getCurrentUrl driver)))
+
+(defn options
+  ([selector-or-element] (options *driver* selector-or-element))
+  ([driver selector-or-element]
+   (let [select-elem (Select. (element driver selector-or-element))]
+     (map (fn [el]
+            {:value (.getAttribute el "value")
+             :text (.getText el)})
+          (.getAllSelectedOptions select-elem)))))
+
 
 ;; modified queries from taxi to retry if StaleElementReferenceException is thrown
 ;; Any timeouts (aka - element not found) are converted to default return values
