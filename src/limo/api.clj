@@ -191,7 +191,6 @@
   ([selector-or-element value] (select-by-text *driver* selector-or-element value))
   ([driver selector-or-element value]
    (scroll-to driver selector-or-element)
-   (click driver selector-or-element)
    (wait-for ["select-by-text" selector-or-element value]
              (doto (Select. (element driver selector-or-element))
                (.selectByVisibleText value))
@@ -201,7 +200,6 @@
   ([selector-or-element value] (select-by-value *driver* selector-or-element value))
   ([driver selector-or-element value]
    (scroll-to driver selector-or-element)
-   (click driver selector-or-element)
    (wait-for ["select-by-value" selector-or-element value]
              (doto (Select. (element driver selector-or-element))
                (.selectByValue value))
