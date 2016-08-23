@@ -1,4 +1,4 @@
-(defproject limo "0.1.7"
+(defproject limo "0.1.8"
   :description "A clojure wrapper around selenium webdriver"
   :url "https://github.com/mayvenn/limo"
   :license {:name "Eclipse Public License"
