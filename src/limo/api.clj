@@ -3,7 +3,8 @@
             [clojure.string :as string]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [environ.core :refer [env]])
+            [environ.core :refer [env]]
+            [clojure.set :as set])
   (:import java.util.concurrent.TimeUnit
            org.openqa.selenium.By
            org.openqa.selenium.By$ByCssSelector
@@ -158,6 +159,36 @@
 (defn switch-to-main-page
   ([] (switch-to-main-page *driver*))
   ([driver] (.. driver switchTo defaultContent)))
+
+(defn switch-to-window
+  [driver window-handle]
+  (.. driver (switchTo) (window window-handle)))
+
+(defn all-windows
+  ([] (all-windows *driver*))
+  ([driver] (set (.getWindowHandles driver))))
+
+(defn active-window
+  ([] (active-window *driver*))
+  ([driver] (.getWindowHandle driver)))
+
+(defmacro in-new-window
+  ([opts action do-body] `(in-new-window *driver* ~opts ~action ~do-body))
+  ([driver {:keys [auto-close?]} action do-body]
+   `(let [prev-handle# (active-window ~driver)
+          old-handles# (all-windows ~driver)]
+      ~action
+      (wait-until #(> (count (all-windows ~driver))
+                          (count old-handles#)))
+      (switch-to-window ~driver
+                        (first (set/difference (all-windows ~driver)
+                                               old-handles#)))
+      ~do-body
+      (if ~auto-close?
+        (wait-until #(= (count (all-windows ~driver))
+                        (count old-handles#)))
+        (.close ~driver))
+      (switch-to-window ~driver prev-handle#))))
 
 ;; Act on Element
 
