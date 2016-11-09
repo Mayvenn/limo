@@ -10,9 +10,7 @@ Limo embraces its tight coupling to Selenium Webdriver. That means no wrapper ty
 
 Add your `project.clj` file:
 
-```
-[limo "0.1.1"]
-```
+[![Clojars Project](https://img.shields.io/clojars/v/limo.svg)](https://clojars.org/limo)
 
 ## Usage
 
