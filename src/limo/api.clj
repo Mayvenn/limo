@@ -7,6 +7,7 @@
             [clojure.set :as set])
   (:import java.util.concurrent.TimeUnit
            org.openqa.selenium.By
+           org.openqa.selenium.By$ByCssSelector
            org.openqa.selenium.Dimension
            [org.openqa.selenium
             Keys
@@ -68,8 +69,8 @@
     (:partial-link-text s) (By/partialLinkText (:partial-link-text s))
     (:name s) (By/name (:name s))
     (:class-name s) (By/className (:class-name s))
-    (or (:css s) ;; for backward compatibility
-        (:css-selector s)) (By/cssSelector (:css-selector s))
+    (:css s) (By$ByCssSelector. (:css s))
+    (:css-selector s) (By/cssSelector (:css-selector s))
     :else (By/cssSelector s)))
 
 (defn ^WebElement element

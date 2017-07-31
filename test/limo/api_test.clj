@@ -29,4 +29,9 @@
     (to "https://httpbin.org")
     ;; Note: click on the secure link using :css-selector locator
     (click-when-visible {:css-selector "#manpage > div > p:nth-child(2) > a:nth-child(2)"})
+    (is (= (current-url) "https://httpbin.org/"))
+
+    (to "https://httpbin.org")
+    ;; Note: click on the secure link using :css locator (the other selector for css)
+    (click-when-visible {:css "#manpage > div > p:nth-child(2) > a:nth-child(2)"})
     (is (= (current-url) "https://httpbin.org/"))))
