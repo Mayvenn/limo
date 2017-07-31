@@ -5,8 +5,10 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.4.0"]
-                 [org.seleniumhq.selenium/selenium-server "3.4.0"]
-                 [org.seleniumhq.selenium/selenium-java "3.4.0"]
+                 [org.seleniumhq.selenium/selenium-support "3.4.0"]
+                 [org.seleniumhq.selenium/selenium-api "3.4.0"]
+                 [org.seleniumhq.selenium/selenium-server "3.4.0" :exclusions [org.seleniumhq.selenium/selenium-api org.seleniumhq.selenium/selenium-support]]
+                 [org.seleniumhq.selenium/selenium-java "3.4.0" :exclusions [org.seleniumhq.selenium/selenium-api org.seleniumhq.selenium/selenium-support]]
                  [environ "1.1.0"]]
   :profiles
   {:dev {:source-paths ["dev"]
