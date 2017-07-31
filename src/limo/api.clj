@@ -8,7 +8,6 @@
   (:import java.util.concurrent.TimeUnit
            org.openqa.selenium.By
            org.openqa.selenium.By$ByCssSelector
-           org.openqa.selenium.By$ByXPath
            org.openqa.selenium.Dimension
            [org.openqa.selenium
             Keys
@@ -63,10 +62,16 @@
   [s]
   (cond
     (element? s) (By/id (.getId s))
-    (:xpath s) (By$ByXPath. (:xpath s))
+    (:xpath s) (By/xpath (:xpath s))
     (:id s) (By/id (:id s))
+    (:tag-name s) (By/tagName (:tag-name s))
+    (:link-text s) (By/linkText (:link-text s))
+    (:partial-link-text s) (By/partialLinkText (:partial-link-text s))
+    (:name s) (By/name (:name s))
+    (:class-name s) (By/className (:class-name s))
     (:css s) (By$ByCssSelector. (:css s))
-    :else (By$ByCssSelector. s)))
+    (:css-selector s) (By/cssSelector (:css-selector s))
+    :else (By/cssSelector s)))
 
 (defn ^WebElement element
   ([selector-or-element] (element *driver* selector-or-element))
@@ -179,7 +184,7 @@
           old-handles# (all-windows ~driver)]
       ~action
       (wait-until #(> (count (all-windows ~driver))
-                          (count old-handles#)))
+                      (count old-handles#)))
       (switch-to-window ~driver
                         (first (set/difference (all-windows ~driver)
                                                old-handles#)))
@@ -340,7 +345,6 @@
             {:value (.getAttribute el "value")
              :text (.getText el)})
           (.getAllSelectedOptions select-elem)))))
-
 
 ;; modified queries from taxi to retry if StaleElementReferenceException is thrown
 ;; Any timeouts (aka - element not found) are converted to default return values
