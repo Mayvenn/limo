@@ -13,7 +13,7 @@ Add your `project.clj` file:
 [![Clojars Project](https://img.shields.io/clojars/v/limo.svg)](https://clojars.org/limo)
 [![CircleCI](https://circleci.com/gh/Mayvenn/limo/tree/master.svg?style=svg&circle-token=e216b48367b08611e35c36e8531bdaa93b349be6)](https://circleci.com/gh/Mayvenn/limo/tree/master)
 
-## Usage
+## Basic Usage - functional test
 
 Currently similar to [clj-webdriver](https://github.com/semperos/clj-webdriver). Unlike clj-webdriver, all actions will poll and ignore stale element exceptions for 15 seconds (by default).
 
@@ -37,6 +37,19 @@ Currently similar to [clj-webdriver](https://github.com/semperos/clj-webdriver).
   (is (contains-text? "#flash-message" "Welcome! You have signed up successfully."))
 ```
 
+## Alternate Usage - automate login, data scrapping, etc
+
+You can also create a new project that use Limo to automate manual tasks using
+[limo-driver](https://github.com/agilecreativity/limo-driver).
+
+e.g.
+
+```sh
+lein new limo-driver <your-project-name>
+```
+This will create the basic CLI project that you can use as starting point to quickly.
+
+Please see [limo-driver's README.md](https://github.com/agilecreativity/limo-driver/blob/master/README.md) for more details.
 
 ## License
 
