@@ -37,7 +37,7 @@ Currently similar to [clj-webdriver](https://github.com/semperos/clj-webdriver).
   (is (contains-text? "#flash-message" "Welcome! You have signed up successfully."))
 ```
 
-## Alternate Usage - automate login, data scrapping, etc
+## Alternate Usage - automate login, data scraping, etc
 
 You can also create a new project that use Limo to automate manual tasks using
 [limo-driver](https://github.com/agilecreativity/limo-driver).
