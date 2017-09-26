@@ -204,10 +204,13 @@
    (cond
      (string? selector-or-element)
      (execute-script driver
-                     (format "document.querySelector(\"%s\").scrollIntoViewIfNeeded();" selector-or-element))
+                     (if (= org.openqa.selenium.firefox.FirefoxDriver (type *driver*))
+                       (format "document.querySelector(\"%s\").scrollIntoView();" selector-or-element)
+                       (format "document.querySelector(\"%s\").scrollIntoViewIfNeeded();" selector-or-element)))
      (element? selector-or-element)
-     (execute-script driver
-                     "arguments[0].scrollIntoViewIfNeeded();"
+     (execute-script driver (if (= org.openqa.selenium.firefox.FirefoxDriver (type *driver*))
+                              "arguments[0].scrollIntoView();"
+                              "arguments[0].scrollIntoViewIfNeeded();")
                      selector-or-element))
    selector-or-element))
 
