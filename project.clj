@@ -21,7 +21,7 @@
                                org.eclipse.jetty/jetty-util]]
                  [org.seleniumhq.selenium/selenium-firefox-driver "3.5.3"]
                  [environ "1.1.0"]
-                 [ring/ring-jetty-adapter "1.6.0-RC3"]]
+                 [ring/ring-jetty-adapter "1.6.2"]]
   :profiles
   {:dev {:source-paths ["dev"]
          :dependencies [[pjstadig/humane-test-output "0.8.2"]
