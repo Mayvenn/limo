@@ -13,6 +13,7 @@
            org.openqa.selenium.logging.LoggingPreferences
            org.openqa.selenium.WebDriver
            org.openqa.selenium.chrome.ChromeDriver
+           org.openqa.selenium.firefox.FirefoxDriver
            org.openqa.selenium.WebDriverException
            org.openqa.selenium.Dimension
            java.util.logging.Level
@@ -61,6 +62,7 @@
 
 (def capabilities
   {:chrome (DesiredCapabilities/chrome)
+   :firefox (DesiredCapabilities/firefox)
    :browser-stack {:samsung-galaxy-s4 (doto (DesiredCapabilities.)
                                         (logging-capability)
                                         (.setCapability "browserName" "android")
@@ -71,6 +73,10 @@
 (defn create-chrome
   ([] (create-chrome (:chrome capabilities)))
   ([capabilities] (ChromeDriver. capabilities)))
+
+(defn create-firefox
+  ([] (create-firefox (:firefox capabilities)))
+  ([capabilities] (FirefoxDriver. capabilities)))
 
 (defn create-remote
   ([desired-capabilities] (RemoteWebDriver. desired-capabilities))
