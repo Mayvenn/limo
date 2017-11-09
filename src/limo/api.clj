@@ -167,13 +167,16 @@
   ([] (switch-to-main-page *driver*))
   ([driver] (.. driver switchTo defaultContent)))
 
-(defn switch-to-window
-  [driver window-handle]
-  (.. driver (switchTo) (window window-handle)))
-
 (defn all-windows
   ([] (all-windows *driver*))
-  ([driver] (set (.getWindowHandles driver))))
+  ([driver] (vec (.getWindowHandles driver))))
+
+(defn switch-to-window
+  ([window-handle] (switch-to-window *driver* window-handle))
+  ([driver window-handle]
+   (wait-until (format "switch-to-window %s" (pr-str window-handle))
+               #(some (partial = window-handle) (all-windows)))
+   (.. driver (switchTo) (window window-handle))))
 
 (defn active-window
   ([] (active-window *driver*))
