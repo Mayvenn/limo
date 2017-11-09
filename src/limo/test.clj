@@ -24,7 +24,7 @@
    (->> (.. driver
             manage
             logs
-            (get (java/->log-type log-type)))
+            (get (java/->log-type log-type-kw)))
         seq
         (map java/log-entry->map))))
 
@@ -40,9 +40,9 @@
   steal-json-logs! is pretty low-level in comparison to most of the other limo apis.
   Considering using with-stolen-performance-logs!
   "
-  ([log-type-kw] (steal-performance-logs! *driver* log-type-kw))
+  ([log-type-kw] (steal-json-logs! *driver* log-type-kw))
   ([driver log-type-kw]
-   (->> (get-logs driver log-type-kw)
+   (->> (steal-logs! driver log-type-kw)
         (map (fn [m] (update m :message #(json/parse-string % true)))))))
 
 (defmacro with-simulated-test-run [& body]
@@ -51,7 +51,7 @@
        ~@body)
      @results#))
 
-(defmacro with-stolen-performance-logs!
+(defmacro with-stolen-performance-json-logs!
   "Repeatedly fetches performance logs until the body returns no test failures or unless a timeout occurs.
 
   NOTE: this destructively consumes performance logs messages from the browser.
@@ -62,16 +62,14 @@
        (is (first (filter #{\"Network.requestWillBeSent\" :method :message :message} logs))
            \"FAIL: a network request was not sent!\"))
   "
-  [logs-sym
-   {:keys [timeout interval driver]
-    :or {interval 500}}
-   & body]
+  [logs-sym {:keys [timeout interval driver log-type]} & body]
   `(let [start# (.getTime (Date.))
          timeout# (or ~timeout *default-timeout*)
-         interval# ~interval
+         interval# (or ~interval 500)
          driver# ~driver
-         logs# (atom [])]
-     (loop [~logs-sym (do (swap! logs# into (steal-performance-logs! (or driver# api/*driver*)))
+         logs# (atom [])
+         log-type# (or ~log-type :performance)]
+     (loop [~logs-sym (do (swap! logs# into (steal-json-logs! (or driver# api/*driver*) log-type#))
                           @logs#)]
        (when (seq (filter (comp #{:fail :error} :type)
                           (with-simulated-test-run ~@body)))
@@ -80,6 +78,6 @@
            (do ~@body)
            (do
              (Thread/sleep interval#)
-             (recur (do (swap! logs# into (steal-performance-logs! (or driver# api/*driver*)))
+             (recur (do (swap! logs# into (steal-json-logs! (or driver# api/*driver*) log-type#))
                         @logs#))))))))
 

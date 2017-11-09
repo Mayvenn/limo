@@ -25,7 +25,12 @@
 
 (def log-level->keyword
   "Provides an easy way to convert java logging levels to clojure keywords"
-  (into {} (map reverse keyword->log-level)))
+  {Level/ALL     :all
+   Level/FINE    :fine
+   Level/INFO    :info
+   Level/WARNING :warning
+   Level/SEVERE  :severe
+   Level/OFF     :off})
 
 (defn ^Level ->log-level [kw-or-instance]
   (if (instance? Level kw-or-instance)
@@ -48,7 +53,7 @@
   [^LogEntry entry]
   {:message   (.getMessage entry)
    :timestamp (.getTimestamp entry)
-   :level     (level->keyword (.getLevel entry))})
+   :level     (log-level->keyword (.getLevel entry))})
 
 (defn ^LoggingPreferences map->logging-preferences
   "Converts a clojure map into selenium LoggingPreferences.
@@ -66,9 +71,9 @@
 
   "
   [m]
-  (let [prefs (LoggingPreferences)]
+  (let [prefs (LoggingPreferences.)]
     (doseq [[type lvl] m]
-      (.enable prefs (->log-type type) (->level lvl)))
+      (.enable prefs (->log-type type) (->log-level lvl)))
     prefs))
 
 (def ^LoggingPreferences default-logging-preferences
@@ -89,7 +94,6 @@
    ;; non-selenium builtins
    :browser-stack/samsung-galaxy-s4 (doto (DesiredCapabilities.)
                                       (.setCapability CapabilityType/LOGGING_PREFS default-logging-preferences)
-                                      (logging-capability)
                                       (.setCapability "browserName" "android")
                                       (.setCapability "platform" "ANDROID")
                                       (.setCapability "device" "Samsung Galaxy S4")
@@ -102,5 +106,5 @@
     :else                             (DesiredCapabilities. m)))
 
 (defn ^DesiredCapabilities set-logging-capability [desired-capabilities m-or-instance]
-  (doto (map->capabilities dc)
+  (doto (->capabilities desired-capabilities)
     (.setCapability CapabilityType/LOGGING_PREFS (map->logging-preferences m-or-instance))))

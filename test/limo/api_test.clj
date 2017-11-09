@@ -2,13 +2,25 @@
   (:require [clojure.test :refer :all]
             [limo.api :refer :all]
             [limo.driver :refer :all]
-            [limo.api :as api]))
+            [limo.test :refer :all]
+            [limo.java :refer :all]))
 
 (deftest opening-a-browser
   (with-fresh-browser create-chrome
     (to "https://httpbin.org")
     (click "a[href='/html']")
     (is (text= "h1" "Herman Melville - Moby-Dick"))))
+
+(deftest multiple-windows
+  (with-fresh-browser create-chrome
+    (to "https://httpbin.org")
+    (is (text= "h1" "httpbin(1): HTTP Request & Response Service"))
+    (execute-script *driver* "window.open('https://now.httpbin.org/');")
+    (is (= 2 (count (all-windows))))
+    (switch-to-window (last (all-windows)))
+    (is (contains-text? "body" "/when/:human-timestamp"))
+    (switch-to-window (first (all-windows)))
+    (is (text= "h1" "httpbin(1): HTTP Request & Response Service"))))
 
 (deftest test-various-by-locators
   (with-fresh-browser create-chrome

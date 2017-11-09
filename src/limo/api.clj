@@ -158,24 +158,20 @@
   ([driver] (.. driver manage deleteAllCookies)))
 
 (defn switch-to-frame
-  ([frame-element] (switch-to *driver* frame-element))
+  ([frame-element] (switch-to-frame *driver* frame-element))
   ([driver frame-element]
    (exists? frame-element {:wait? true})
    (.. driver (switchTo) (frame (element frame-element)))))
 
-(defn switch-to-main-page
-  ([] (switch-to-main-page *driver*))
-  ([driver] (.. driver switchTo defaultContent)))
-
 (defn all-windows
   ([] (all-windows *driver*))
-  ([driver] (vec (.getWindowHandles driver))))
+  ([driver] (seq (.getWindowHandles driver))))
 
 (defn switch-to-window
   ([window-handle] (switch-to-window *driver* window-handle))
   ([driver window-handle]
-   (wait-until (format "switch-to-window %s" (pr-str window-handle))
-               #(some (partial = window-handle) (all-windows)))
+   (wait-for [(format "switch-to-window %s" (pr-str window-handle))]
+             (some (partial = window-handle) (all-windows driver)))
    (.. driver (switchTo) (window window-handle))))
 
 (defn active-window
