@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
+            [limo.java :refer [->capabilities set-logging-capability]]
             [limo.api :as api :refer [to delete-all-cookies current-url implicit-wait]])
   (:import org.openqa.selenium.remote.RemoteWebDriver
            org.openqa.selenium.remote.CapabilityType
@@ -47,40 +48,17 @@
           (log/error "[Console]" entry))))
     (reporter-fn m)))
 
-(defn map->capabilities [^java.util.Map m]
-  (if (instance? DesiredCapabilities m)
-    m
-    (DesiredCapabilities. m)))
-
-(defn logging-capability
-  ([desired-capabilities] (logging-capability desired-capabilities Level/ALL))
-  ([desired-capabilities level]
-   (doto (map->capabilities desired-capabilities)
-     (.setCapability CapabilityType/LOGGING_PREFS
-                     (doto (LoggingPreferences.)
-                       (.enable LogType/BROWSER level))))))
-
-(def capabilities
-  {:chrome (DesiredCapabilities/chrome)
-   :firefox (DesiredCapabilities/firefox)
-   :browser-stack {:samsung-galaxy-s4 (doto (DesiredCapabilities.)
-                                        (logging-capability)
-                                        (.setCapability "browserName" "android")
-                                        (.setCapability "platform" "ANDROID")
-                                        (.setCapability "device" "Samsung Galaxy S4")
-                                        (.setCapability "browserstack.debug" "true"))}})
-
 (defn create-chrome
-  ([] (create-chrome (:chrome capabilities)))
-  ([capabilities] (ChromeDriver. capabilities)))
+  ([] (create-chrome :chrome))
+  ([capabilities] (ChromeDriver. (->capabilities capabilities))))
 
 (defn create-firefox
-  ([] (create-firefox (:firefox capabilities)))
-  ([capabilities] (FirefoxDriver. capabilities)))
+  ([] (create-firefox :firefox))
+  ([capabilities] (FirefoxDriver. (->capabilities capabilities))))
 
 (defn create-remote
-  ([desired-capabilities] (RemoteWebDriver. desired-capabilities))
-  ([url desired-capabilities] (RemoteWebDriver. (io/as-url url) desired-capabilities)))
+  ([desired-capabilities] (RemoteWebDriver. (->capabilities desired-capabilities)))
+  ([url desired-capabilities] (RemoteWebDriver. (io/as-url url) (->capabilities desired-capabilities))))
 
 (defn with-driver* [driver {:keys [quit?]} f]
   (let [old-driver api/*driver*
