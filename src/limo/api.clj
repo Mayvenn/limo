@@ -191,11 +191,11 @@
       (wait-until #(> (count (all-windows ~driver))
                       (count old-handles#)))
       (switch-to-window ~driver
-                        (first (set/difference (all-windows ~driver)
+                        (first (set/difference (set (all-windows ~driver))
                                                old-handles#)))
       ~do-body
       (if ~auto-close?
-        (wait-until #(= (count (all-windows ~driver))
+        (wait-until #(= (count (set (all-windows ~driver)))
                         (count old-handles#)))
         (.close ~driver))
       (switch-to-window ~driver prev-handle#))))
