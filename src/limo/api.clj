@@ -157,9 +157,11 @@
   ([] (delete-all-cookies *driver*))
   ([driver] (.. driver manage deleteAllCookies)))
 
-(defn switch-to
-  ([iframe-element] (switch-to *driver* iframe-element))
-  ([driver iframe-element] (.. driver (switchTo) (frame iframe-element))))
+(defn switch-to-frame
+  ([frame-element] (switch-to *driver* frame-element))
+  ([driver frame-element]
+   (exists? frame-element {:wait? true})
+   (.. driver (switchTo) (frame (element frame-element)))))
 
 (defn switch-to-main-page
   ([] (switch-to-main-page *driver*))
