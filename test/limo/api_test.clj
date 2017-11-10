@@ -22,6 +22,16 @@
     (switch-to-window (first (all-windows)))
     (is (text= "h1" "httpbin(1): HTTP Request & Response Service"))))
 
+
+(deftest network
+  (with-fresh-browser (partial create-chrome (set-logging-capability (->capabilities :chrome)
+                                                                     {:browser     :all
+                                                                      :performance :all}))
+    (to "https://httpbin.org")
+    (execute-script *driver* "var r = new XMLHttpRequest(); r.open(\"GET\", \"/get\", null); r.send();")
+    (with-stolen-performance-json-logs! logs _
+      (is (first (filter (comp #{"Network.requestWillBeSent"} :method :message :message) logs))))))
+
 (deftest test-various-by-locators
   (with-fresh-browser create-chrome
     (to "https://httpbin.org")

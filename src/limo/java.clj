@@ -78,7 +78,8 @@
 
 (def ^LoggingPreferences default-logging-preferences
   (map->logging-preferences {:browser     :all
-                             :performance :all}))
+                             :performance :all
+                             :profiler    :all}))
 
 (def ^:dynamic *default-capabilities*
   {:chrome                          (DesiredCapabilities/chrome)

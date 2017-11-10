@@ -64,20 +64,21 @@
   "
   [logs-sym {:keys [timeout interval driver log-type]} & body]
   `(let [start# (.getTime (Date.))
-         timeout# (or ~timeout *default-timeout*)
-         interval# (or ~interval 500)
+         timeout# ~(or timeout *default-timeout*)
+         interval# ~(or interval 500)
          driver# ~driver
          logs# (atom [])
-         log-type# (or ~log-type :performance)]
-     (loop [~logs-sym (do (swap! logs# into (steal-json-logs! (or driver# api/*driver*) log-type#))
+         log-type# ~(or log-type :performance)]
+     (loop [~logs-sym (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
                           @logs#)]
-       (when (seq (filter (comp #{:fail :error} :type)
+       (if (seq (filter (comp #{:fail :error} :type)
                           (with-simulated-test-run ~@body)))
          (if (> (- (.getTime (Date.)) start#)
                 timeout#)
            (do ~@body)
            (do
              (Thread/sleep interval#)
-             (recur (do (swap! logs# into (steal-json-logs! (or driver# api/*driver*) log-type#))
-                        @logs#))))))))
+             (recur (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
+                        @logs#))))
+         (do ~@body)))))
 
