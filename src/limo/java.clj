@@ -81,7 +81,7 @@
                              :performance :all
                              :profiler    :all}))
 
-(def ^:dynamic *default-capabilities*
+(def ^:dynamic *capabilities*
   {:chrome                          (DesiredCapabilities/chrome)
    :firefox                         (DesiredCapabilities/firefox)
    :android                         (DesiredCapabilities/android)
@@ -103,7 +103,7 @@
 (defn ^DesiredCapabilities ->capabilities [m]
   (cond
     (instance? DesiredCapabilities m) m
-    (keyword? m)                      (*default-capabilities* m)
+    (keyword? m)                      (*capabilities* m)
     :else                             (DesiredCapabilities. m)))
 
 (defn ^DesiredCapabilities set-logging-capability [desired-capabilities m-or-instance]
