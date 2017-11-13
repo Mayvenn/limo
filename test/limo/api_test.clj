@@ -29,7 +29,7 @@
                                                                       :performance :all}))
     (to "https://httpbin.org")
     (execute-script *driver* "var r = new XMLHttpRequest(); r.open(\"GET\", \"/get\", null); r.send();")
-    (with-stolen-performance-json-logs! logs _
+    (read-performance-logs-until-test-pass! logs _
       (is (first (filter (comp #{"Network.requestWillBeSent"} :method :message :message) logs))))))
 
 (deftest test-various-by-locators

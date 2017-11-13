@@ -51,7 +51,7 @@
        ~@body)
      @results#))
 
-(defmacro with-stolen-performance-json-logs!
+(defmacro read-performance-logs-until-test-pass!
   "Repeatedly fetches performance logs until the body returns no test failures or unless a timeout occurs.
 
   NOTE: this destructively consumes performance logs messages from the browser.
@@ -62,6 +62,7 @@
        (is (first (filter #{\"Network.requestWillBeSent\" :method :message :message} logs))
            \"FAIL: a network request was not sent!\"))
   "
+  {:style/indent 1}
   [logs-sym {:keys [timeout interval driver log-type]} & body]
   `(let [start# (.getTime (Date.))
          timeout# ~(or timeout *default-timeout*)
@@ -71,14 +72,15 @@
          log-type# ~(or log-type :performance)]
      (loop [~logs-sym (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
                           @logs#)]
-       (if (seq (filter (comp #{:fail :error} :type)
-                          (with-simulated-test-run ~@body)))
-         (if (> (- (.getTime (Date.)) start#)
-                timeout#)
-           (do ~@body)
-           (do
-             (Thread/sleep interval#)
-             (recur (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
-                        @logs#))))
-         (do ~@body)))))
+       (let [has-test-failures# (seq (filter (comp #{:fail :error} :type)
+                                             (with-simulated-test-run ~@body)))
+             duration# (- (.getTime (Date.)) start#)]
+         (if has-test-failures#
+           (if (> duration# timeout#)
+             (do ~@body) ;; report test failures
+             (do ;; retry
+               (Thread/sleep interval#)
+               (recur (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
+                          @logs#))))
+           (do ~@body)))))) ;; report test success
 
