@@ -163,6 +163,10 @@
    (exists? frame-element {:wait? true})
    (.. driver (switchTo) (frame (element frame-element)))))
 
+(defn switch-to-main-page
+  ([] (switch-to-main-page *driver*))
+  ([driver] (.. driver switchTo defaultContent)))
+
 (defn all-windows
   ([] (all-windows *driver*))
   ([driver] (seq (.getWindowHandles driver))))
