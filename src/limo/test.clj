@@ -6,20 +6,20 @@
              [limo.java :as java])
   (:import java.util.Date))
 
-(defn steal-logs!
+(defn read-logs!
   "Retrieves logs of a given type from the browser being control by selenium.
 
   NOTE: The browser may discard the log information after the request to retrive
-  the logs occurs. This means multiple calls to steal-logs! can return different
+  the logs occurs. This means multiple calls to readonly-logs! can return different
   results.
 
-    > (count (steal-logs!)) => 5
-    > (count (steal-logs!)) => 0
+    > (count (read-logs!)) => 5
+    > (count (read-logs!)) => 0
 
-  steal-logs! is pretty low-level in comparison to most of the other limo apis.
+  read-logs! is pretty low-level in comparison to most of the other limo apis.
   Considering using with-stolen-performance-logs!
   "
-  ([log-type-kw] (steal-logs! *driver* log-type-kw))
+  ([log-type-kw] (read-logs! *driver* log-type-kw))
   ([driver log-type-kw]
    (->> (.. driver
             manage
@@ -28,21 +28,21 @@
         seq
         (map java/log-entry->map))))
 
-(defn steal-json-logs!
-  "Identical steal-logs!, but parses the message body as JSON.
+(defn read-json-logs!
+  "Identical read-logs!, but parses the message body as JSON.
 
-  NOTE: the same limitations as steal-logs! applies: that is, that the browser
+  NOTE: the same limitations as read-logs! applies: that is, that the browser
   may discard the log information after the request to retrive the logs occurs.
 
   This is known to be useful with Chrome's performance logs to get network and
   rendering information. Chrome's performance log data is encoded in JSON.
 
-  steal-json-logs! is pretty low-level in comparison to most of the other limo apis.
+  read-json-logs! is pretty low-level in comparison to most of the other limo apis.
   Considering using with-stolen-performance-logs!
   "
-  ([log-type-kw] (steal-json-logs! *driver* log-type-kw))
+  ([log-type-kw] (read-json-logs! *driver* log-type-kw))
   ([driver log-type-kw]
-   (->> (steal-logs! driver log-type-kw)
+   (->> (read-logs! driver log-type-kw)
         (map (fn [m] (update m :message #(json/parse-string % true)))))))
 
 (defmacro with-simulated-test-run [& body]
@@ -51,6 +51,29 @@
        ~@body)
      @results#))
 
+(defmacro retry-until
+  {:style/indent 1}
+  [{:keys [timeout interval reader pred]} & body]
+  `(let [start# (.getTime (Date.))
+         timeout# ~(or timeout *default-timeout*)
+         interval# ~(or interval 500)
+         read!# ~reader
+         pred# ~pred]
+     (loop [_# (read!#)]
+       (let [has-test-failures# (pred# (fn [] ~@body))
+             duration# (- (.getTime (Date.)) start#)]
+         (if has-test-failures#
+           (if (> duration# timeout#)
+             (do ~@body)
+             (do
+               (Thread/sleep interval#)
+               (recur (read!#))))
+           (do ~@body))))))
+
+(defn test-failures? [test-fn]
+  (boolean (seq (filter (comp #{:fail :error} :type)
+                        (with-simulated-test-run (test-fn))))))
+
 (defmacro read-performance-logs-until-test-pass!
   "Repeatedly fetches performance logs until the body returns no test failures or unless a timeout occurs.
 
@@ -58,29 +81,22 @@
 
   Example:
 
-    (with-stolen-performance-logs! logs _
+    (read-performance-logs-until-test-pass! [logs]
        (is (first (filter #{\"Network.requestWillBeSent\" :method :message :message} logs))
            \"FAIL: a network request was not sent!\"))
   "
-  {:style/indent 1}
-  [logs-sym {:keys [timeout interval driver log-type]} & body]
-  `(let [start# (.getTime (Date.))
-         timeout# ~(or timeout *default-timeout*)
-         interval# ~(or interval 500)
-         driver# ~driver
-         logs# (atom [])
-         log-type# ~(or log-type :performance)]
-     (loop [~logs-sym (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
-                          @logs#)]
-       (let [has-test-failures# (seq (filter (comp #{:fail :error} :type)
-                                             (with-simulated-test-run ~@body)))
-             duration# (- (.getTime (Date.)) start#)]
-         (if has-test-failures#
-           (if (> duration# timeout#)
-             (do ~@body) ;; report test failures
-             (do ;; retry
-               (Thread/sleep interval#)
-               (recur (do (swap! logs# into (steal-json-logs! (or driver# *driver*) log-type#))
-                          @logs#))))
-           (do ~@body)))))) ;; report test success
+  {:style/indent 1
+   :arglists '([[logs-atom] & body]
+               [[logs-atom {:keys [timeout interval driver log-type pred]}] & body])}
+  [[logs-atom & [{:keys [timeout interval driver log-type pred]}]] & body]
+  `(let [driver# ~driver
+         log-type# (or ~log-type :performance)
+         logs# ~logs-atom]
+     (retry-until {:reader (fn []
+                             (swap! logs# into (read-json-logs! (or driver# *driver*) log-type#))
+                             @logs#)
+                   :pred test-failures?
+                   :timeout ~timeout
+                   :interval ~interval}
+                  ~@body)))
 
