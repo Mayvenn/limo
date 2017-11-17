@@ -1,28 +1,10 @@
 (ns limo.test
   "Limo features useful under a testing context"
   (:require  [clojure.test :as t]
-             [limo.api :as api :refer [*driver* *default-timeout*]]
+             [limo.api :as api :refer [*driver*]]
+             [limo.helpers :as helpers]
              [limo.java :as java])
   (:import java.util.Date))
-
-(defmacro retry-until
-  {:style/indent 1}
-  [{:keys [timeout interval reader pred]} & body]
-  `(let [start# (.getTime (Date.))
-         timeout# ~(or timeout *default-timeout*)
-         interval# ~(or interval 500)
-         read!# ~reader
-         pred# ~pred]
-     (loop [_# (read!#)]
-       (let [has-test-failures# (pred# (fn [] ~@body))
-             duration# (- (.getTime (Date.)) start#)]
-         (if has-test-failures#
-           (if (> duration# timeout#)
-             (do ~@body)
-             (do
-               (Thread/sleep interval#)
-               (recur (read!#))))
-           (do ~@body))))))
 
 (defmacro with-simulated-test-run [& body]
   `(let [results# (atom [])]
@@ -52,11 +34,11 @@
   `(let [driver# ~driver
          log-type# (or ~log-type :performance)
          logs# ~logs-atom]
-     (retry-until {:reader (fn []
-                             (swap! logs# into (api/read-json-logs! (or driver# *driver*) log-type#))
-                             @logs#)
-                   :pred test-failures?
-                   :timeout ~timeout
-                   :interval ~interval}
-       ~@body)))
+     (helpers/retry-until {:reader (fn []
+                                     (swap! logs# into (api/read-json-logs! (or driver# *driver*) log-type#))
+                                     @logs#)
+                           :pred test-failures?
+                           :timeout ~timeout
+                           :interval ~interval}
+                          ~@body)))
 
