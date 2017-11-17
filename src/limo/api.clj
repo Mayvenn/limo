@@ -1,6 +1,7 @@
 (ns limo.api
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
+            [clojure.test :refer :all]
             [limo.java :as java]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
