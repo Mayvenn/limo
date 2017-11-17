@@ -1,9 +1,10 @@
 (ns limo.api
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
-            [clojure.test :refer :all]
+            [limo.java :as java]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
+            [cheshire.core :as json]
             [clojure.set :as set])
   (:import java.util.concurrent.TimeUnit
            org.openqa.selenium.firefox.FirefoxDriver
@@ -200,6 +201,45 @@
                         (count old-handles#)))
         (.close ~driver))
       (switch-to-window ~driver prev-handle#))))
+
+(defn read-logs!
+  "Retrieves logs of a given type from the browser being control by selenium.
+
+  NOTE: The browser may discard the log information after the request to retrive
+  the logs occurs. This means multiple calls to readonly-logs! can return different
+  results.
+
+    > (count (read-logs!)) => 5
+    > (count (read-logs!)) => 0
+
+  read-logs! is pretty low-level in comparison to most of the other limo apis.
+  Considering using with-stolen-performance-logs!
+  "
+  ([log-type-kw] (read-logs! *driver* log-type-kw))
+  ([driver log-type-kw]
+   (->> (.. driver
+            manage
+            logs
+            (get (java/->log-type log-type-kw)))
+        seq
+        (map java/log-entry->map))))
+
+(defn read-json-logs!
+  "Identical read-logs!, but parses the message body as JSON.
+
+  NOTE: the same limitations as read-logs! applies: that is, that the browser
+  may discard the log information after the request to retrive the logs occurs.
+
+  This is known to be useful with Chrome's performance logs to get network and
+  rendering information. Chrome's performance log data is encoded in JSON.
+
+  read-json-logs! is pretty low-level in comparison to most of the other limo apis.
+  Considering using with-stolen-performance-logs!
+  "
+  ([log-type-kw] (read-json-logs! *driver* log-type-kw))
+  ([driver log-type-kw]
+   (->> (read-logs! driver log-type-kw)
+        (map (fn [m] (update m :message #(json/parse-string % true)))))))
 
 ;; Act on Element
 

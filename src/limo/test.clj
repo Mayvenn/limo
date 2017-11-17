@@ -1,55 +1,9 @@
 (ns limo.test
   "Limo features useful under a testing context"
   (:require  [clojure.test :as t]
-             [cheshire.core :as json]
-             [limo.api :refer [*driver* *default-timeout*]]
+             [limo.api :as api :refer [*driver* *default-timeout*]]
              [limo.java :as java])
   (:import java.util.Date))
-
-(defn read-logs!
-  "Retrieves logs of a given type from the browser being control by selenium.
-
-  NOTE: The browser may discard the log information after the request to retrive
-  the logs occurs. This means multiple calls to readonly-logs! can return different
-  results.
-
-    > (count (read-logs!)) => 5
-    > (count (read-logs!)) => 0
-
-  read-logs! is pretty low-level in comparison to most of the other limo apis.
-  Considering using with-stolen-performance-logs!
-  "
-  ([log-type-kw] (read-logs! *driver* log-type-kw))
-  ([driver log-type-kw]
-   (->> (.. driver
-            manage
-            logs
-            (get (java/->log-type log-type-kw)))
-        seq
-        (map java/log-entry->map))))
-
-(defn read-json-logs!
-  "Identical read-logs!, but parses the message body as JSON.
-
-  NOTE: the same limitations as read-logs! applies: that is, that the browser
-  may discard the log information after the request to retrive the logs occurs.
-
-  This is known to be useful with Chrome's performance logs to get network and
-  rendering information. Chrome's performance log data is encoded in JSON.
-
-  read-json-logs! is pretty low-level in comparison to most of the other limo apis.
-  Considering using with-stolen-performance-logs!
-  "
-  ([log-type-kw] (read-json-logs! *driver* log-type-kw))
-  ([driver log-type-kw]
-   (->> (read-logs! driver log-type-kw)
-        (map (fn [m] (update m :message #(json/parse-string % true)))))))
-
-(defmacro with-simulated-test-run [& body]
-  `(let [results# (atom [])]
-     (binding [t/report (fn [m#] (swap! results# conj m#))]
-       ~@body)
-     @results#))
 
 (defmacro retry-until
   {:style/indent 1}
@@ -69,6 +23,12 @@
                (Thread/sleep interval#)
                (recur (read!#))))
            (do ~@body))))))
+
+(defmacro with-simulated-test-run [& body]
+  `(let [results# (atom [])]
+     (binding [t/report (fn [m#] (swap! results# conj m#))]
+       ~@body)
+     @results#))
 
 (defn test-failures? [test-fn]
   (boolean (seq (filter (comp #{:fail :error} :type)
@@ -93,10 +53,10 @@
          log-type# (or ~log-type :performance)
          logs# ~logs-atom]
      (retry-until {:reader (fn []
-                             (swap! logs# into (read-json-logs! (or driver# *driver*) log-type#))
+                             (swap! logs# into (api/read-json-logs! (or driver# *driver*) log-type#))
                              @logs#)
                    :pred test-failures?
                    :timeout ~timeout
                    :interval ~interval}
-                  ~@body)))
+       ~@body)))
 
