@@ -2,8 +2,7 @@
   (:require [limo.api :refer [*default-timeout*]])
   (:import java.util.Date))
 
-(defmacro ^{:style/indent 1}
-  retry-until
+(defmacro ^{:style/indent 1} retry-until
   "Private - Subject to change.
 
   Retries a given reader fn until a timeout occurs or pred succeeds"
