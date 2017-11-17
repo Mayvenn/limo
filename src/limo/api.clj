@@ -61,17 +61,17 @@
 (defn ^By by
   [s]
   (cond
-    (element? s) (By/id (.getId s))
-    (:xpath s) (By/xpath (:xpath s))
-    (:id s) (By/id (:id s))
-    (:tag-name s) (By/tagName (:tag-name s))
-    (:link-text s) (By/linkText (:link-text s))
+    (element? s)           (By/id (.getId s))
+    (:xpath s)             (By/xpath (:xpath s))
+    (:id s)                (By/id (:id s))
+    (:tag-name s)          (By/tagName (:tag-name s))
+    (:link-text s)         (By/linkText (:link-text s))
     (:partial-link-text s) (By/partialLinkText (:partial-link-text s))
-    (:name s) (By/name (:name s))
-    (:class-name s) (By/className (:class-name s))
-    (:css s) (By$ByCssSelector. (:css s))
-    (:css-selector s) (By/cssSelector (:css-selector s))
-    :else (By/cssSelector s)))
+    (:name s)              (By/name (:name s))
+    (:class-name s)        (By/className (:class-name s))
+    (:css s)               (By$ByCssSelector. (:css s))
+    (:css-selector s)      (By/cssSelector (:css-selector s))
+    :else                  (By/cssSelector s)))
 
 (defn ^WebElement element
   ([selector-or-element] (element *driver* selector-or-element))
