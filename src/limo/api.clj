@@ -296,7 +296,7 @@
   ([driver selector-or-element s]
    (wait-for nil
              (.sendKeys (element driver selector-or-element)
-                        (into-array CharSequence [s]))
+                        (into-array CharSequence (if (vector? s) s [s])))
              true)))
 
 (def input-text send-keys)
@@ -480,11 +480,9 @@
 (defn clear-fields [fields] ;- {selector function-or-string-to-enter}
   (doseq [[selector _] (filter (fn [[key value]] (string? value)) fields)]
     (when (allow-backspace? selector)
-      ;; once for each character in the field
-      (doseq [c (value selector)]
-        ;; input[type=number] cursor starts at the beginning instead of end
-        (send-keys selector Keys/BACK_SPACE)
-        (send-keys selector Keys/DELETE)))))
+      (let [times (count (value selector))]
+        (send-keys selector (vec (repeat times Keys/BACK_SPACE)))
+        (send-keys selector (vec (repeat times Keys/DELETE)))))))
 
 (defn normalize-fields
   "Converts all string values that indicate typing text into functions"
