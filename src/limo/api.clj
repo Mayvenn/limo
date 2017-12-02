@@ -1,4 +1,5 @@
 (ns limo.api
+  "The core API wrapper around selenium webdrivers"
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.test :refer :all]
@@ -28,11 +29,45 @@
             WebDriverWait]
            org.openqa.selenium.support.ui.Select))
 
-(def ^:dynamic *driver* nil)
-(def ^:dynamic *default-timeout* 15000) ;; msec
-(def ^:dynamic is-waiting false)
+(def ^:dynamic *driver*
+  "The implied selenium WebDriver instance to use when invoking functions with api calls.
 
-(defn set-driver! [d]
+  All API functions can explicitly accept the WebDriver as the first argument.
+  Otherwise if that argument is excluded, then this dynamically bounded var is
+  used instead.
+
+  Example:
+
+    > (limo.api/click \"#button\")
+    ;; becomes
+    > (limo.api/click *driver* \"#button\")
+
+  Defaults to `nil`. Use [[set-driver!]] as a way to quickly set this variable.
+  "
+  nil)
+
+(def ^:dynamic *default-timeout*
+  "The default timeout in milliseconds until limo gives up attempting to try an action.
+  Defaults to 15 seconds (15000).
+
+  This value is used for wait-* set of functions which most other function calls
+  rely upon.
+
+  The default value is generous enough to try and cover a variety of machine
+  speeds, but you may find value in tweaking this parameter when checking for a
+  negative state (eg - verifying that a checkbox isn't checked).
+  "
+  15000) ;; msec
+
+;; Internal to wait-for to prevent nesting poll loops, which creates flakier builds.
+(def ^:private ^:dynamic is-waiting false)
+
+(defn set-driver!
+  "Sets the current implied active selenium WebDriver ([[*driver*]]).
+
+  Note: (set-driver! nil) is a no-op.
+  "
+  [d]
   (when d
     (alter-var-root #'*driver* (constantly d))))
 
@@ -58,10 +93,38 @@
 
 ;; Elements
 
-(defn element? [e]
+(defn element?
+  "Helper function. A predicate that indicates if the given value is a selenium WebElement instance."
+  [e]
   (instance? WebElement e))
 
 (defn ^By by
+  "Creates a Selenium By instance (aka - a selenium element search query) to
+  find an HTML element.
+
+  In general, you should probably be calling this function directly. All limo
+  functions call `element` which internally calls this function to find an
+  element.
+
+  This function accepts either a String, Selenium WebElement or a map containing
+  one of the following keys to indicate how to find a DOM element:
+
+   - :css or :css-selector => search by CSS selector
+   - :id                   => search by element ID attribute
+   - :xpath                => search by element xpath
+   - :tag-name             => search by element tag name (eg - p, h1, div)
+   - :link-text            => search by anchor text
+   - :partial-link-text    => search by anchor text containing some text
+   - :name                 => search by name attribute (eg - input fields)
+   - :class-name           => search by a css class name the element has
+
+  Examples:
+
+    ;; return By instance to query by CSS
+    > (by \"h1\")
+    ;; Implies
+    > (by {:css \"h1\"})
+  "
   [s]
   (cond
     (element? s)           (By/id (.getId s))
@@ -77,6 +140,14 @@
     :else                  (By/cssSelector s)))
 
 (defn ^WebElement element
+  "Returns a selenium WebElement of a selector that [[by]] accepts.
+
+  If selector-or-element is an [[element?]], then the value is simply returned.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([selector-or-element] (element *driver* selector-or-element))
   ([driver selector-or-element]
    (if (element? selector-or-element)
@@ -84,6 +155,15 @@
      (.findElement driver (by selector-or-element)))))
 
 (defn elements
+  "Returns a sequence of WebElement instances that match the selector that
+  [[by]] accepts.
+
+  If selector-or-element is an [[element?]], then the value is simply returned.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([selector-or-elements] (elements *driver* selector-or-elements))
   ([driver selector-or-elements]
    (cond
@@ -92,6 +172,14 @@
      :else (.findElements driver (by selector-or-elements)))))
 
 (defn exists?
+  "Returns a boolean indicates if the given selector (that [[by]] accepts)
+  matches an element that is not the current page the selenium browser is
+  viewing.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([selector-or-element] (exists? *driver* selector-or-element))
   ([driver selector-or-element]
    (try
@@ -101,6 +189,38 @@
 ;; Polling / Waiting
 
 (defn wait-until
+  "Runs a given predicate pred repeatedly until a timeout occurs or pred returns
+  a truthy value.
+
+  This is usually called by other limo APIs unless IMMEDIATE is indicated in the
+  docs.
+
+  Parameters:
+   - `pred` can return a value, and that becomes the return value of wait-until.
+   - `timeout` in the time in milliseconds to wait for. Uses
+     [[*default-timeout*]] if not explicitly specified.
+   - `interval` is the time in milliseconds between calling `pred`. Defaults to
+     0 because [[implicit-wait]] is probably what you want to set.
+   - `driver` is an alternative WebDriver instance to use other than [[*driver*]].
+
+  Waits & polls:
+    There are 3-values that dicate polling in Limo: timeout interval, sleep
+    interval, and browser wait interval.
+
+     - Timeout interval is the maximum time in Selenium (& Limo) which an action
+       can take in its entirety.
+     - Sleep interval is the Thead.sleep call Selenium calls inbetween calls to
+       `pred` returning a falsy value.
+     - Browser wait interval (aka - ImplicitlyWait) is the maximum time the browser
+       will wait for an element that matches to appear.
+
+    In our experience, the browser wait interval is usually what keeps actions
+    held. An action like \"click this button\" relies on the button existing
+    before it can be clicked.
+
+    StaleElementReferenceException are captured and indicate a falsy return
+    value of `pred`. Other exceptions will be rethrown.
+  "
   ([pred] (wait-until pred *default-timeout*))
   ([pred timeout]
    (wait-until *driver* pred timeout 0))
@@ -120,17 +240,19 @@
          @return-value)))))
 
 (defn wait-until-clickable
+  "A specialized version of wait-until that waits until an element is clickable."
   ([selector] (wait-until-clickable *driver* selector *default-timeout*))
   ([driver selector timeout]
    (let [wait (doto (WebDriverWait. driver (/ timeout 1000) 0)
                 (.ignoring StaleElementReferenceException))]
      (.until wait (ExpectedConditions/elementToBeClickable (by selector))))))
 
-(defmacro wait-for [narration & body]
+(defmacro wait-for
+  [narration & body]
   (if (empty? narration)
     `(wait-until (fn [] ~@body))
     `(do
-       (println ~@narration)
+       (log/info (str ~@narration))
        (wait-until (fn [] ~@body)))))
 
 (defmacro wait-for-else [narration default-value & body]

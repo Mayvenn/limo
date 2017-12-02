@@ -27,6 +27,7 @@
   {:dev {:source-paths ["dev"]
          :dependencies [[pjstadig/humane-test-output "0.8.2"]
                         [org.clojure/tools.namespace "0.2.11"]]
-         :plugins [[lein-cljfmt "0.5.6"]]
+         :plugins [[lein-cljfmt "0.5.6"]
+                   [lein-codox "0.10.3"]]
          :injections [(require 'pjstadig.humane-test-output)
                       (pjstadig.humane-test-output/activate!)]}})
