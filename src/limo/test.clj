@@ -6,15 +6,15 @@
              [limo.java :as java])
   (:import java.util.Date))
 
-(defmacro with-simulated-test-run [& body]
-  `(let [results# (atom [])]
-     (binding [t/report (fn [m#] (swap! results# conj m#))]
-       ~@body)
-     @results#))
+(defn ^:private simulate-test-run [body-fn]
+  (let [results (transient [])]
+    (binding [t/report (fn [m] (conj! results m))]
+      (body-fn))
+    (persistent! results)))
 
 (defn test-failures? [test-fn]
   (boolean (seq (filter (comp #{:fail :error} :type)
-                        (with-simulated-test-run (test-fn))))))
+                        (simulate-test-run test-fn)))))
 
 (defmacro read-performance-logs-until-test-pass!
   "Repeatedly fetches performance logs until the body returns no test failures or unless a timeout occurs.
