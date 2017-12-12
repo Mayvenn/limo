@@ -60,7 +60,9 @@
   15000) ;; msec
 
 ;; Internal to wait-for to prevent nesting poll loops, which creates flakier builds.
-(def ^:private ^:dynamic is-waiting false)
+(def ^:private ^:dynamic *is-waiting* false)
+
+(def ^:private ^:dynamic *ignore-nested-wait-exception* false)
 
 (defn set-driver!
   "Sets the current implied active selenium WebDriver ([[*driver*]]).
@@ -227,11 +229,11 @@
   ([pred timeout interval]
    (wait-until *driver* pred timeout interval))
   ([driver pred timeout interval]
-   (if is-waiting
-     (if-let [result (pred)]
-       result
-       (throw (StaleElementReferenceException. "Inside another wait-until. Forcing retry.")))
-     (binding [is-waiting true]
+   (if *is-waiting*
+     (if *ignore-nested-wait-exception*
+       (pred)
+       (or (pred) (throw (StaleElementReferenceException. "Inside another wait-until. Forcing retry."))))
+     (binding [*is-waiting* true]
        (let [return-value (atom nil)
              wait (doto (WebDriverWait. driver (/ timeout 1000) interval)
                     (.ignoring StaleElementReferenceException))]
