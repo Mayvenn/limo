@@ -107,7 +107,7 @@
   "Creates a Selenium By instance (aka - a selenium element search query) to
   find an HTML element.
 
-  In general, you should probably be calling this function directly. All limo
+  In general, you shouldn't probably be calling this function directly. All limo
   functions call `element` which internally calls this function to find an
   element.
 
