@@ -265,6 +265,7 @@
      (.until wait (ExpectedConditions/elementToBeClickable (by selector))))))
 
 (defmacro wait-for
+  "A specialized version of wait-until that includes narration (printing to stdout) the action that is taken."
   [driver narration & body]
   (if (empty? narration)
     `(wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)
@@ -272,7 +273,9 @@
        (log/info (str ~@narration))
        (wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*))))
 
-(defmacro wait-for-else [driver narration default-value & body]
+(defmacro wait-for-else
+  "Like wait-for, but has a default return value if the waiting predicate fails."
+  [driver narration default-value & body]
   `(try
      ~(if (empty? narration)
         `(wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)
@@ -283,37 +286,144 @@
        ~default-value)))
 
 (defn implicit-wait
+  "Sets the driver's implicit wait interval. The implicit wait interval is poll
+  interval is how much a browser will wait.
+
+  There are two kinds of waits:
+
+   - The test suite polls & waits (see [[*default-interval*]],
+    [[*default-timeout*]], [[wait-until]], [[wait-for]], [[wait-until-clickable]],
+    [[wait-for-else]]). Here the test suite / limo is responsible for polling
+    and asking the browser to see if an element exists.
+   - The browser waits for an element to appear. This is what [[implicit-wait]] configures.
+
+  For example, if we ask the browser to click on #button, but it isn't
+  immediately available, the browser will use the implicit-wait value to
+  internally wait up to the given time until returning an element not found
+  error.
+
+  Read Selenium's explaination of waits for another perspective of the same thing:
+  http://www.seleniumhq.org/docs/04_webdriver_advanced.jsp#explicit-and-implicit-waits
+  "
   ([timeout] (implicit-wait *driver* timeout))
   ([driver timeout] (.. driver manage timeouts (implicitlyWait timeout TimeUnit/MILLISECONDS))))
 
 ;; Act on Driver
 
-(defn execute-script [driver js & js-args]
+(defn execute-script
+  "Evaluates a given javascript string on the page.
+
+  Generally you want to control most of your interacts via the supported browser
+  operations, but sometimes it's needed to run some javascript on the page
+  directly - like activating a verbose logging mode, or forcing one into a
+  specific A/B test.
+
+  Parameters:
+   - `driver` is the selenium driver to use
+   - `js` is the javascript string to eval on the page.
+   - `js-args` is the variadic arguments of values to pass into the eval
+     function. These values are limited to what can be translated to javascript,
+     which are the following:
+     - numbers
+     - booleans
+     - strings
+     - WebElements (objects returned via [[element]])
+     - lists of any above types
+
+  Note:
+    The javascript script string is executed in anonymous closure like this:
+
+      (function(){ $JS })($JS-ARGS);
+
+    which means you'll need to use `arguments` in `js` to access arguments pass
+    through from clojure to javascript.
+
+  Returns:
+    The return value is whatever the return value of the javascript eval
+    expression, which are also constrainted to the same times that can be
+    translated as a js-args value.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
+  [driver js & js-args]
   (.executeScript driver (str js) (into-array Object js-args)))
 
 (defn quit
+  "Closes the driver, which implies closing all browser windows the driver has created.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (quit *driver*))
   ([driver] (.quit driver)))
 
 (defn delete-all-cookies
+  "Deletes all cookies associated with the page the browser is currently on.
+
+  There is no way in Selenium's APIs to clear all cookies in a driver without
+  re-creating the driver. If you wish to reuse a driver, you must navigate to
+  every domain and call this function to clear cookies.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (delete-all-cookies *driver*))
   ([driver] (.. driver manage deleteAllCookies)))
 
 (defn switch-to-frame
+  "Changes the driver's DOM queries to target a given frame or iframe.
+
+  Drivers do no walk through child frames/iframes' DOM elements. This function
+  allows all subsequent calls (eg - [[element]]) will target elements inside
+  that frame.
+
+  See [[switch-to-main-page]] to restore querying against the page elements.
+  See [[switch-to-window]] to query against windows.
+  "
   ([frame-element] (switch-to-frame *driver* frame-element))
   ([driver frame-element]
    (exists? driver frame-element {:wait? true})
    (.. driver (switchTo) (frame (element driver frame-element)))))
 
 (defn switch-to-main-page
+  "Changes the driver's DOM queries to target the main page body.
+
+  Drivers do no walk through child frames/iframes' DOM elements. This function
+  allows all subsequent calls (eg - [[element]]) will target elements directly
+  on the page.
+
+  See [[switch-to-frame]] to query against iframes / frames.
+  See [[switch-to-window]] to query against windows.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (switch-to-main-page *driver*))
   ([driver] (.. driver switchTo defaultContent)))
 
 (defn all-windows
+  "Returns a sequence of all window ids (strings) that refer to specific browser
+  windows the driver controls.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (all-windows *driver*))
   ([driver] (seq (.getWindowHandles driver))))
 
 (defn switch-to-window
+  "Changes the driver's DOM queries to target a given browser window.
+
+  See [[switch-to-frame]] to query against iframes / frames.
+  See [[all-windows]] to list all window ids
+  See [[active-window]] to get the current window id
+  "
   ([window-handle] (switch-to-window *driver* window-handle))
   ([driver window-handle]
    (wait-for driver [(format "switch-to-window %s" (pr-str window-handle))]
@@ -321,10 +431,23 @@
    (.. driver (switchTo) (window window-handle))))
 
 (defn active-window
+  "Returns the window id (string) of the current window that the driver is focused on.
+
+  The active-window is the window where (switch-to-window (active-window)) is a no-op.
+
+  See [[switch-to-window]] to switch focused window.
+  See [[all-windows]] to list all window ids
+  See [[active-window]] to get the current window id
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (active-window *driver*))
   ([driver] (.getWindowHandle driver)))
 
 (defmacro in-new-window
+  "Creates a temporary new browser window that `do-body` runs inside."
   ([opts action do-body] `(in-new-window *driver* ~opts ~action ~do-body))
   ([driver {:keys [auto-close?]} action do-body]
    `(let [prev-handle# (active-window ~driver)
@@ -384,6 +507,7 @@
 ;; Act on Element
 
 (defn scroll-to
+  "Scrolls the browser to a given element so that it visible on the screen."
   ([selector-or-element] (scroll-to *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-until* #(exists? driver selector-or-element) {:driver driver})
@@ -401,6 +525,7 @@
    selector-or-element))
 
 (defn click
+  "Clicks on a given element."
   ([selector-or-element] (click *driver* selector-or-element))
   ([driver selector-or-element]
    (scroll-to driver selector-or-element)
@@ -409,10 +534,20 @@
              (.click (element driver selector-or-element))
              true)))
 
-(def submit click)
-(def toggle click)
+(def submit
+  "Alias to [[click]]. Typically reads nice when referring to submit buttons."
+  click)
+
+(def toggle
+  "Alias to [[click]]. Typically reads nice when referring to checkboxes"
+  click)
 
 (defn select-by-text
+  "Selects a given option in a drop-down element by the user-visible text on the element.
+
+  Useful if you know you want to select a given option that is visible on screen
+  and its value changes more often that its display text.
+  "
   ([selector-or-element value] (select-by-text *driver* selector-or-element value))
   ([driver selector-or-element value]
    (scroll-to driver selector-or-element)
@@ -422,6 +557,11 @@
              selector-or-element)))
 
 (defn select-by-value
+  "Selects a given option in a drop-down element by the server-provided value of the element.
+
+  Useful if you know you want to select a given option that has a constant
+  value, but may change its user-visible text more often.
+  "
   ([selector-or-element value] (select-by-value *driver* selector-or-element value))
   ([driver selector-or-element value]
    (scroll-to driver selector-or-element)
@@ -431,6 +571,10 @@
              selector-or-element)))
 
 (defn send-keys
+  "Sends keypresses to a given element. Types on a given input field.
+
+  Characters can be strings or vector of strings.
+  "
   ([selector-or-element s] (send-keys *driver* selector-or-element s))
   ([driver selector-or-element s]
    (wait-for driver nil
@@ -438,23 +582,31 @@
                         (into-array CharSequence (if (vector? s) s [s])))
              true)))
 
-(def input-text send-keys)
+(def input-text
+  "Alias to [[send-keys]]. Sends keypresses to a given element. Types on a given input field.
+
+  Characters can be strings or vector of strings.
+  "
+  send-keys)
 
 ;; Query Element
 
 (defn tag
+  "Returns an element's html tag name."
   ([selector-or-element] (tag *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-for-else driver ["tag" selector-or-element] nil
                   (.getTagName (element driver selector-or-element)))))
 
 (defn text
+  "Returns an element's innerText."
   ([selector-or-element] (text *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-for-else driver ["text" selector-or-element] ""
                   (.getText (element driver selector-or-element)))))
 
 (defn attribute
+  "Returns an element's attribute value for a given attribute name."
   ([selector-or-element attr] (attribute *driver* selector-or-element attr))
   ([driver selector-or-element attr]
    (if (= attr :text)
@@ -476,8 +628,11 @@
          webdriver-result)))))
 
 (defn allow-backspace?
-  "Don't hit backspace on selects, radios, checkboxes, etc.
-   The browser will go back to the previous page."
+  "Returns a true if the given element can handle backspace keypresses.
+
+  Hitting backspace on anything except selects, radios, checkboxes will cause
+  the browser to go back to the previous page.
+  "
   [e]
   (when e
     (case (tag e)
@@ -487,13 +642,21 @@
                   not)
       true)))
 
-(defn has-class [q class]
+(defn has-class
+  "Returns a true if a given element has a class on it."
+  [q class]
   (-> (element q)
       (.getAttribute "Class")
       (or "")
       (.contains class)))
 
 (defn window-size
+  "Returns the current window's size
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (window-size *driver*))
   ([driver]
    (wait-for driver ["window-size"]
@@ -502,6 +665,12 @@
                 :height (.getHeight d)}))))
 
 (defn window-resize
+  "Resizes the current window to the given dimensions.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([dimensions-map] (window-resize *driver* dimensions-map))
   ([driver {:keys [width height] :as dimensions-map}]
    (println "window-resize")
@@ -511,24 +680,43 @@
        (.setSize (Dimension. width height)))))
 
 (defn refresh
+  "Refreshes/Reloads the current page the browser is on.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (refresh *driver*))
   ([driver]
    (println "refresh")
    (-> driver .navigate .refresh)))
 
 (defn to
+  "Navigates to a given url. As if one types on the address bar.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([^String url] (to *driver* url))
   ([driver ^String url]
    (println "to" url)
    (-> driver .navigate (.to url))))
 
 (defn current-url
+  "Returns the current url the browser is on.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (current-url *driver*))
   ([^WebDriver driver]
    (println "current-url")
    (.getCurrentUrl driver)))
 
 (defn options
+  "Returns a sequence of all form value and visible text for a given drop-down"
   ([selector-or-element] (options *driver* selector-or-element))
   ([driver selector-or-element]
    (let [select-elem (Select. (element driver selector-or-element))]
@@ -541,29 +729,35 @@
 ;; Any timeouts (aka - element not found) are converted to default return values
 
 (defn visible?
+  "Returns true if the given element is visible?"
   ([selector-or-element] (visible? *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-for-else driver ["visible?" selector-or-element] false
                   (.isDisplayed (element driver selector-or-element)))))
 (defn selected?
+  "Returns true if the given element is selected (eg - checkbox)"
   ([selector-or-element] (selected? *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-for-else driver ["selected?" selector-or-element] false
                   (.isSelected (element driver selector-or-element)))))
 
 (defn value
+  "Returns the input's value of a given input element"
   ([selector-or-element] (value *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-for-else driver ["value" selector-or-element] ""
                   (.getAttribute (element driver selector-or-element) "value"))))
 
 (defn invisible?
+  "Returns true if the given element is invisible."
   ([selector-or-element] (invisible? *driver* selector-or-element))
   ([driver selector-or-element]
    (wait-for-else driver ["invisible?" selector-or-element] false
                   (not (.isDisplayed (element driver selector-or-element))))))
 
-(defn current-url-contains? [substr]
+(defn current-url-contains?
+  "Returns true if the current url contains some text"
+  [substr]
   (println "current-url-contains?" (pr-str substr))
   (let [result (try
                  (wait-until #(.contains (current-url) substr))
@@ -575,12 +769,16 @@
 ;; Assert on Elements
 
 (defn text=
+  "Returns true if the element has innerText of a given value. The comparison is
+  case-insensitive and will timeout if a match does not occur."
   ([selector-or-element expected-value] (text= *driver* selector-or-element expected-value))
   ([driver selector-or-element expected-value]
    (wait-for-else driver ["assert text=" selector-or-element expected-value] false
                   (case-insensitive= (.getText (element driver selector-or-element)) expected-value))))
 
 (defn value=
+  "Returns true if the element has a value of a given string. The comparison is
+  case-insensitive and will timeout if a match does not occur."
   ([selector-or-element expected-value] (value= *driver* selector-or-element expected-value))
   ([driver selector-or-element expected-value]
    (wait-for-else driver ["assert value=" selector-or-element expected-value] false
@@ -588,6 +786,8 @@
                                      expected-value))))
 
 (defn contains-text?
+  "Returns true if the element has innerText contains a given value. The comparison is
+  case-insensitive and will timeout if a match does not occur."
   ([selector-or-element expected-substr] (contains-text? *driver* selector-or-element expected-substr))
   ([driver selector-or-element expected-substr]
    (wait-for-else driver ["assert contains-text?" selector-or-element expected-substr] false
@@ -600,18 +800,23 @@
    (wait-for-else driver ["assert num-elements=" selector-or-element expected-count] false
                   (= (count (elements selector-or-element)) expected-count))))
 
-(defn element-matches ([selector-or-element pred] (element-matches *driver* selector-or-element pred))
+(defn element-matches
+  ([selector-or-element pred] (element-matches *driver* selector-or-element pred))
   ([driver selector-or-element pred]
    (wait-for-else driver ["match element with pred" selector-or-element] false
                   (pred (element selector-or-element)))))
 
 ;; Actions based on queries on elements
 
-(defn click-when-visible [selector]
+(defn click-when-visible
+  "Clicks on a given element, but makes sure it's visible before doing so."
+  [selector]
   (is (visible? selector))
   (click selector))
 
-(defn set-checkbox [selector checked?]
+(defn set-checkbox
+  "Sets a checkbox element to the given state (true = check, false = unchecked)"
+  [selector checked?]
   (when-not (= (selected? selector) checked?)
     (toggle selector)))
 
