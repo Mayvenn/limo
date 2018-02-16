@@ -1,5 +1,7 @@
 # Limo [![CircleCI](https://circleci.com/gh/Mayvenn/limo/tree/master.svg?style=svg&circle-token=e216b48367b08611e35c36e8531bdaa93b349be6)](https://circleci.com/gh/Mayvenn/limo/tree/master)
 
+[API Docs](http://mayvenn.github.io/limo)
+
 A Clojure library that's a small wrapper around selenium webdriver.
 
 Why a new wrapper? This library aims to provide a high-level capybara-styled api.
