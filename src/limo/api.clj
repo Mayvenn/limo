@@ -476,7 +476,7 @@
     > (count (read-logs!)) => 0
 
   read-logs! is pretty low-level in comparison to most of the other limo apis.
-  Considering using with-stolen-performance-logs!
+  Considering using [[read-performance-logs-until-test-pass!]]
   "
   ([log-type-kw] (read-logs! *driver* log-type-kw))
   ([driver log-type-kw]
@@ -497,7 +497,7 @@
   rendering information. Chrome's performance log data is encoded in JSON.
 
   read-json-logs! is pretty low-level in comparison to most of the other limo apis.
-  Considering using with-stolen-performance-logs!
+  Considering using [[read-performance-logs-until-test-pass!]]
   "
   ([log-type-kw] (read-json-logs! *driver* log-type-kw))
   ([driver log-type-kw]
