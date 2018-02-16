@@ -22,6 +22,19 @@
     (switch-to-window (first (all-windows)))
     (is (text= "h1" "httpbin(1): HTTP Request & Response Service"))))
 
+(deftest without-implicit-driver
+  (set-driver! nil) ;; just to be sure
+  (let [driver (create-chrome)]
+    (to driver "https://httpbin.org")
+    (is (text= driver "h1" "httpbin(1): HTTP Request & Response Service"))
+    (execute-script driver "window.open('https://now.httpbin.org/');")
+    (is (= 2 (count (all-windows driver))))
+    (switch-to-window driver (last (all-windows driver)))
+    (is (contains-text? driver "body" "/when/:human-timestamp"))
+    (switch-to-window driver (first (all-windows driver)))
+    (is (text= driver "h1" "httpbin(1): HTTP Request & Response Service"))
+    (click driver "a[href='/html']")
+    (is (text= driver "h1" "Herman Melville - Moby-Dick"))))
 
 (deftest network
   (with-fresh-browser (partial create-chrome (set-logging-capability (->capabilities :chrome)

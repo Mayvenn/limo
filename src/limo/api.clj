@@ -59,6 +59,9 @@
   "
   15000) ;; msec
 
+(def ^:dynamic *default-interval*
+  0)
+
 ;; Internal to wait-for to prevent nesting poll loops, which creates flakier builds.
 (def ^:private ^:dynamic *is-waiting* false)
 
@@ -190,6 +193,28 @@
 
 ;; Polling / Waiting
 
+(defn ^:private wait-until* ;; TODO(jeff): promote to replace wait-until fn
+  ([pred] (wait-until* pred {}))
+  ([pred options]
+   (let [{:keys [driver timeout interval poll? suppress-non-poll-exception?]
+          :or {driver *driver*
+               timeout *default-timeout*
+               interval *default-interval*
+               poll? *is-waiting*
+               suppress-non-poll-exception? *ignore-nested-wait-exception*}}
+         options]
+     (if poll?
+       (if suppress-non-poll-exception?
+         (pred)
+         (or (pred) (throw (StaleElementReferenceException. "Inside another wait-until. Forcing retry."))))
+       (binding [*is-waiting* true]
+         (let [return-value (atom nil)
+               wait (doto (WebDriverWait. driver (/ timeout 1000) interval)
+                      (.ignoring StaleElementReferenceException))]
+           (.until wait (proxy [ExpectedCondition] []
+                          (apply [d] (reset! return-value (pred)))))
+           @return-value))))))
+
 (defn wait-until
   "Runs a given predicate pred repeatedly until a timeout occurs or pred returns
   a truthy value.
@@ -223,23 +248,13 @@
     StaleElementReferenceException are captured and indicate a falsy return
     value of `pred`. Other exceptions will be rethrown.
   "
-  ([pred] (wait-until pred *default-timeout*))
-  ([pred timeout]
-   (wait-until *driver* pred timeout 0))
-  ([pred timeout interval]
-   (wait-until *driver* pred timeout interval))
-  ([driver pred timeout interval]
-   (if *is-waiting*
-     (if *ignore-nested-wait-exception*
-       (pred)
-       (or (pred) (throw (StaleElementReferenceException. "Inside another wait-until. Forcing retry."))))
-     (binding [*is-waiting* true]
-       (let [return-value (atom nil)
-             wait (doto (WebDriverWait. driver (/ timeout 1000) interval)
-                    (.ignoring StaleElementReferenceException))]
-         (.until wait (proxy [ExpectedCondition] []
-                        (apply [d] (reset! return-value (pred)))))
-         @return-value)))))
+  ([pred] (wait-until* pred))
+  ([pred timeout] (wait-until* pred {:timeout timeout}))
+  ([pred timeout interval] (wait-until* pred {:timeout timeout
+                                              :interval interval}))
+  ([driver pred timeout interval] (wait-until* pred {:driver driver
+                                                     :timeout timeout
+                                                     :interval interval})))
 
 (defn wait-until-clickable
   "A specialized version of wait-until that waits until an element is clickable."
@@ -250,20 +265,20 @@
      (.until wait (ExpectedConditions/elementToBeClickable (by selector))))))
 
 (defmacro wait-for
-  [narration & body]
+  [driver narration & body]
   (if (empty? narration)
-    `(wait-until (fn [] ~@body))
+    `(wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)
     `(do
        (log/info (str ~@narration))
-       (wait-until (fn [] ~@body)))))
+       (wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*))))
 
-(defmacro wait-for-else [narration default-value & body]
+(defmacro wait-for-else [driver narration default-value & body]
   `(try
      ~(if (empty? narration)
-        `(wait-until (fn [] ~@body))
+        `(wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)
         `(do
            (println ~@narration)
-           (wait-until (fn [] ~@body))))
+           (wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)))
      (catch TimeoutException te#
        ~default-value)))
 
@@ -287,8 +302,8 @@
 (defn switch-to-frame
   ([frame-element] (switch-to-frame *driver* frame-element))
   ([driver frame-element]
-   (exists? frame-element {:wait? true})
-   (.. driver (switchTo) (frame (element frame-element)))))
+   (exists? driver frame-element {:wait? true})
+   (.. driver (switchTo) (frame (element driver frame-element)))))
 
 (defn switch-to-main-page
   ([] (switch-to-main-page *driver*))
@@ -301,7 +316,7 @@
 (defn switch-to-window
   ([window-handle] (switch-to-window *driver* window-handle))
   ([driver window-handle]
-   (wait-for [(format "switch-to-window %s" (pr-str window-handle))]
+   (wait-for driver [(format "switch-to-window %s" (pr-str window-handle))]
              (some (partial = window-handle) (all-windows driver)))
    (.. driver (switchTo) (window window-handle))))
 
@@ -371,7 +386,7 @@
 (defn scroll-to
   ([selector-or-element] (scroll-to *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-until #(exists? selector-or-element))
+   (wait-until* #(exists? driver selector-or-element) {:driver driver})
    (cond
      (string? selector-or-element)
      (execute-script driver
@@ -389,8 +404,8 @@
   ([selector-or-element] (click *driver* selector-or-element))
   ([driver selector-or-element]
    (scroll-to driver selector-or-element)
-   (wait-until-clickable selector-or-element)
-   (wait-for ["click" selector-or-element]
+   (wait-until-clickable driver selector-or-element *default-timeout*)
+   (wait-for driver ["click" selector-or-element]
              (.click (element driver selector-or-element))
              true)))
 
@@ -401,7 +416,7 @@
   ([selector-or-element value] (select-by-text *driver* selector-or-element value))
   ([driver selector-or-element value]
    (scroll-to driver selector-or-element)
-   (wait-for ["select-by-text" selector-or-element value]
+   (wait-for driver ["select-by-text" selector-or-element value]
              (doto (Select. (element driver selector-or-element))
                (.selectByVisibleText value))
              selector-or-element)))
@@ -410,7 +425,7 @@
   ([selector-or-element value] (select-by-value *driver* selector-or-element value))
   ([driver selector-or-element value]
    (scroll-to driver selector-or-element)
-   (wait-for ["select-by-value" selector-or-element value]
+   (wait-for driver ["select-by-value" selector-or-element value]
              (doto (Select. (element driver selector-or-element))
                (.selectByValue value))
              selector-or-element)))
@@ -418,7 +433,7 @@
 (defn send-keys
   ([selector-or-element s] (send-keys *driver* selector-or-element s))
   ([driver selector-or-element s]
-   (wait-for nil
+   (wait-for driver nil
              (.sendKeys (element driver selector-or-element)
                         (into-array CharSequence (if (vector? s) s [s])))
              true)))
@@ -427,14 +442,16 @@
 
 ;; Query Element
 
-(defn tag [selector-or-element]
-  (wait-for-else ["tag" selector-or-element] nil
-                 (.getTagName (element selector-or-element))))
+(defn tag
+  ([selector-or-element] (tag *driver* selector-or-element))
+  ([driver selector-or-element]
+   (wait-for-else driver ["tag" selector-or-element] nil
+                  (.getTagName (element driver selector-or-element)))))
 
 (defn text
   ([selector-or-element] (text *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-for-else ["text" selector-or-element] ""
+   (wait-for-else driver ["text" selector-or-element] ""
                   (.getText (element driver selector-or-element)))))
 
 (defn attribute
@@ -451,7 +468,7 @@
                           "nowrap", "open", "paused", "pubdate", "readonly", "required",
                           "reversed", "scoped", "seamless", "seeking", "selected", "spellcheck",
                           "truespeed", "willvalidate"]
-           webdriver-result (wait-for-else ["attribute" selector-or-element attr] nil
+           webdriver-result (wait-for-else driver ["attribute" selector-or-element attr] nil
                                            (.getAttribute (element driver selector-or-element) (name attr)))]
        (if (some #{attr} boolean-attrs)
          (when (= webdriver-result "true")
@@ -479,7 +496,7 @@
 (defn window-size
   ([] (window-size *driver*))
   ([driver]
-   (wait-for ["window-size"]
+   (wait-for driver ["window-size"]
              (let [d (.. driver manage window getSize)]
                {:width (.getWidth d)
                 :height (.getHeight d)}))))
@@ -526,24 +543,24 @@
 (defn visible?
   ([selector-or-element] (visible? *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-for-else ["visible?" selector-or-element] false
+   (wait-for-else driver ["visible?" selector-or-element] false
                   (.isDisplayed (element driver selector-or-element)))))
 (defn selected?
   ([selector-or-element] (selected? *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-for-else ["selected?" selector-or-element] false
+   (wait-for-else driver ["selected?" selector-or-element] false
                   (.isSelected (element driver selector-or-element)))))
 
 (defn value
   ([selector-or-element] (value *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-for-else ["value" selector-or-element] ""
+   (wait-for-else driver ["value" selector-or-element] ""
                   (.getAttribute (element driver selector-or-element) "value"))))
 
 (defn invisible?
   ([selector-or-element] (invisible? *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-for-else ["invisible?" selector-or-element] false
+   (wait-for-else driver ["invisible?" selector-or-element] false
                   (not (.isDisplayed (element driver selector-or-element))))))
 
 (defn current-url-contains? [substr]
@@ -560,33 +577,32 @@
 (defn text=
   ([selector-or-element expected-value] (text= *driver* selector-or-element expected-value))
   ([driver selector-or-element expected-value]
-   (wait-for-else ["assert text=" selector-or-element expected-value] false
-                  (case-insensitive= (.getText (element selector-or-element)) expected-value))))
+   (wait-for-else driver ["assert text=" selector-or-element expected-value] false
+                  (case-insensitive= (.getText (element driver selector-or-element)) expected-value))))
 
 (defn value=
   ([selector-or-element expected-value] (value= *driver* selector-or-element expected-value))
   ([driver selector-or-element expected-value]
-   (wait-for-else ["assert value=" selector-or-element expected-value] false
-                  (case-insensitive= (.getAttribute (element selector-or-element) "value")
+   (wait-for-else driver ["assert value=" selector-or-element expected-value] false
+                  (case-insensitive= (.getAttribute (element driver selector-or-element) "value")
                                      expected-value))))
 
 (defn contains-text?
   ([selector-or-element expected-substr] (contains-text? *driver* selector-or-element expected-substr))
   ([driver selector-or-element expected-substr]
-   (wait-for-else ["assert contains-text?" selector-or-element expected-substr] false
-                  (.contains (lower-case (.getText (element selector-or-element)))
+   (wait-for-else driver ["assert contains-text?" selector-or-element expected-substr] false
+                  (.contains (lower-case (.getText (element driver selector-or-element)))
                              (lower-case expected-substr)))))
 
 (defn num-elements=
   ([selector-or-element expected-count] (num-elements= *driver* selector-or-element expected-count))
   ([driver selector-or-element expected-count]
-   (wait-for-else ["assert num-elements=" selector-or-element expected-count] false
+   (wait-for-else driver ["assert num-elements=" selector-or-element expected-count] false
                   (= (count (elements selector-or-element)) expected-count))))
 
-(defn element-matches
-  ([selector-or-element pred] (element-matches *driver* selector-or-element pred))
+(defn element-matches ([selector-or-element pred] (element-matches *driver* selector-or-element pred))
   ([driver selector-or-element pred]
-   (wait-for-else ["match element with pred" selector-or-element] false
+   (wait-for-else driver ["match element with pred" selector-or-element] false
                   (pred (element selector-or-element)))))
 
 ;; Actions based on queries on elements
