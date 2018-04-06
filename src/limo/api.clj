@@ -927,7 +927,7 @@
 (defn with-window-size*
   "Use [[with-window-size]] instead."
   ([new-size actions-fn]
-   (with-window-size* *driver* new-size actiosn))
+   (with-window-size* *driver* new-size actions-fn))
   ([driver new-size actions-fn]
    (let [w-size (window-size driver)]
      (window-resize driver new-size)
