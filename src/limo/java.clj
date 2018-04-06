@@ -3,6 +3,7 @@
   (:import [org.openqa.selenium.logging LogType LogEntry LoggingPreferences]
            org.openqa.selenium.remote.DesiredCapabilities
            org.openqa.selenium.remote.CapabilityType
+           org.openqa.selenium.OutputType
            java.util.logging.Level))
 
 (def keyword->log-type
@@ -109,3 +110,15 @@
 (defn ^DesiredCapabilities set-logging-capability [desired-capabilities m-or-instance]
   (doto (->capabilities desired-capabilities)
     (.setCapability CapabilityType/LOGGING_PREFS (map->logging-preferences m-or-instance))))
+
+(def keyword->output-type
+  {:file OutputType/FILE
+   :base64 OutputType/BASE64
+   :bytes OutputType/BYTES})
+
+(defn ^OutputType ->output-type [kw-or-instance]
+  (if (instance? OutputType kw-or-instance)
+    kw-or-instance
+    (if-let [type (keyword->output-type kw-or-instance)]
+      type
+      (throw (IllegalArgumentException. (format "Expected one of (%s) or OutputType instance" (pr-str (keys keyword->output-type))))))))

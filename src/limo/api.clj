@@ -795,12 +795,14 @@
                              (lower-case expected-substr)))))
 
 (defn num-elements=
+  "Returns true if the element has a certain number of elements that matches the given query."
   ([selector-or-element expected-count] (num-elements= *driver* selector-or-element expected-count))
   ([driver selector-or-element expected-count]
    (wait-for-else driver ["assert num-elements=" selector-or-element expected-count] false
                   (= (count (elements selector-or-element)) expected-count))))
 
 (defn element-matches
+  "Returns true if the element has a certain number of elements that matches the given query."
   ([selector-or-element pred] (element-matches *driver* selector-or-element pred))
   ([driver selector-or-element pred]
    (wait-for-else driver ["match element with pred" selector-or-element] false
@@ -822,7 +824,12 @@
 
 ;; - Form Filling
 
-(defn clear-fields [fields] ;- {selector function-or-string-to-enter}
+(defn clear-fields
+  "Like [[fill-form]], but clears all the text contents of inputs by deleting its contents.
+
+  NOTE: currently this is very naive presses backspace and delete N times, where
+  N is the len of the text."
+  [fields] ;- {selector function-or-string-to-enter}
   (doseq [[selector _] (filter (fn [[key value]] (string? value)) fields)]
     (when (allow-backspace? selector)
       (let [times (count (value selector))]
@@ -831,7 +838,7 @@
 
 (defn normalize-fields
   "Converts all string values that indicate typing text into functions"
-  [fields]
+  [fields] ;- {selector function-or-string} -> {selector function}
   (into {}
         (map (fn [[k v]] [k (if (string? v)
                               #(input-text % v)
@@ -847,7 +854,19 @@
    (apply fill-form* more-fields)))
 
 (defn fill-form
-  ([fields1 fields2 & more-fields]
+  "Fills forms either by input text (if a string is given) or calling a function.
+
+  This function is variadic to allow ordered-filling of inputs.
+
+  If text is filled in, then its prior contents is cleared first.
+
+  Example:
+
+    (fill-form {\"input[name=name]\" \"my name\"
+                \"input[email=email]\" \"me@example.com\"}
+               {\"input[type=submit]\" click})
+  "
+  ([fields1 fields2 & more-fields] ;- {selector function-or-string-to-enter}
    (fill-form fields1)
    (apply fill-form fields2 more-fields))
   ([fields]
@@ -860,19 +879,28 @@
 
 ;; Screenshots
 
-(defn take-screenshot
+(defn ^OutputType take-screenshot
+  "Tells the driver to capture a screenshot of the currently active window.
+
+  Paramters:
+
+    format: Can be :file, :base64, or :bytes which prescribes the return value
+    destination: An optional path to save the screenshot to disk. Set nil to ignore.
+
+  Returns:
+
+    org.openqa.selenium.OutputType instance with the screenshot data in the desired format.
+
+  IMMEDIATE:
+    This function is considered immediate, and does not poll using [[wait-until]]
+    or [[wait-for]]. Thus, it is unaffected by [[*default-timeout*]].
+  "
   ([] (take-screenshot *driver* :file))
   ([format] (take-screenshot *driver* format nil))
   ([format destination] (take-screenshot *driver* format destination))
   ([driver format destination]
-   {:pre [(or (= format :file)
-              (= format :base64)
-              (= format :bytes))]}
    (let [driver ^TakesScreenshot driver
-         output (case format
-                  :file (.getScreenshotAs driver OutputType/FILE)
-                  :base64 (.getScreenshotAs driver OutputType/BASE64)
-                  :bytes (.getScreenshotAs driver OutputType/BYTES))]
+         output (.getScreenshotAs driver (java/->output-type format))]
      (if destination
        (do
          (io/copy output (io/file destination))
@@ -890,17 +918,24 @@
     (take-screenshot :file f)))
 
 (defn screenshot
+  "A higher-level function to take a screenshot and immediately save it on disk."
   ([name] (screenshot name screenshot-dir))
   ([name dir-f] (save-screenshot (str name ".png") dir-f)))
 
 ;; Window Size
 
-(defn with-window-size* [new-size actions]
-  (let [w-size (window-size)]
-    (window-resize new-size)
-    (let [result (actions)]
-      (window-resize w-size)
-      result)))
+(defn with-window-size*
+  "Use [[with-window-size]] instead."
+  ([new-size actions-fn]
+   (with-window-size* *driver* new-size actiosn))
+  ([driver new-size actions-fn]
+   (let [w-size (window-size driver)]
+     (window-resize driver new-size)
+     (let [result (actions-fn)]
+       (window-resize driver w-size)
+       result))))
 
-(defmacro with-window-size [new-size & body]
+(defmacro with-window-size
+  "Temporarily resizes the current driver window when evaluating the body expression."
+  [new-size & body]
   `(with-window-size* ~new-size (fn [] ~@body)))
