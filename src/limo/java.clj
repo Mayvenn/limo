@@ -83,6 +83,7 @@
                              :profiler    :all}))
 
 (def ^:dynamic *capabilities*
+  "A map of keywords that define various browser capabilities."
   {:chrome                          (DesiredCapabilities/chrome)
    :firefox                         (DesiredCapabilities/firefox)
    :android                         (DesiredCapabilities/android)
@@ -116,7 +117,9 @@
    :base64 OutputType/BASE64
    :bytes OutputType/BYTES})
 
-(defn ^OutputType ->output-type [kw-or-instance]
+(defn ^OutputType ->output-type
+  "Coerces a keyword to selenium OutputType"
+  [kw-or-instance]
   (if (instance? OutputType kw-or-instance)
     kw-or-instance
     (if-let [type (keyword->output-type kw-or-instance)]
