@@ -52,6 +52,9 @@
   ([] (create-chrome :chrome))
   ([capabilities] (ChromeDriver. (->capabilities capabilities))))
 
+(defn create-chrome-headless []
+  (create-chrome :chrome/headless))
+
 (defn create-firefox
   ([] (create-firefox :firefox))
   ([capabilities] (FirefoxDriver. (->capabilities capabilities))))

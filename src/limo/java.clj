@@ -85,6 +85,9 @@
 (def ^:dynamic *capabilities*
   "A map of keywords that define various browser capabilities."
   {:chrome                          (DesiredCapabilities/chrome)
+   :chrome/default                  (DesiredCapabilities/chrome)
+   :chrome/headless                 (doto (DesiredCapabilities/chrome)
+                                      (.setCapability "chromeOptions" {"args" ["--headless"]}))
    :firefox                         (DesiredCapabilities/firefox)
    :android                         (DesiredCapabilities/android)
    :html-unit                       (DesiredCapabilities/htmlUnit)

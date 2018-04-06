@@ -5,6 +5,12 @@
             [limo.test :refer :all]
             [limo.java :refer :all]))
 
+(deftest opening-chrome-headless
+  (with-fresh-browser create-chrome-headless
+    (to "https://httpbin.org")
+    (click "a[href='/html']")
+    (is (text= "h1" "Herman Melville - Moby-Dick"))))
+
 (deftest opening-a-browser
   (with-fresh-browser create-chrome
     (to "https://httpbin.org")
