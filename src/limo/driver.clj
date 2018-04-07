@@ -7,7 +7,6 @@
             [limo.api :as api :refer [to delete-all-cookies current-url implicit-wait]])
   (:import org.openqa.selenium.remote.RemoteWebDriver
            org.openqa.selenium.remote.CapabilityType
-           org.openqa.selenium.remote.DesiredCapabilities
            org.openqa.selenium.logging.LogEntries
            org.openqa.selenium.logging.LogEntry
            org.openqa.selenium.logging.LogType

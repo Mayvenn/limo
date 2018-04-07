@@ -2,6 +2,7 @@
   "This namespace in limo is for translating between clojure data structures and java classes."
   (:import [org.openqa.selenium.logging LogType LogEntry LoggingPreferences]
            org.openqa.selenium.remote.DesiredCapabilities
+           org.openqa.selenium.Capabilities
            org.openqa.selenium.remote.CapabilityType
            org.openqa.selenium.OutputType
            java.util.logging.Level))
@@ -82,12 +83,14 @@
                              :performance :all
                              :profiler    :all}))
 
+(defn merge-capabilities
+  ([^Capabilities a ^Capabilities b] (.merge a b))
+  ([^Capabilities a ^Capabilities b ^Capabilities c & more]
+   (apply merge-capabilities (.merge a b) c more)))
+
 (def ^:dynamic *capabilities*
-  "A map of keywords that define various browser capabilities."
+  "A map of keywords that define various browser or features capabilities."
   {:chrome                          (DesiredCapabilities/chrome)
-   :chrome/default                  (DesiredCapabilities/chrome)
-   :chrome/headless                 (doto (DesiredCapabilities/chrome)
-                                      (.setCapability "chromeOptions" {"args" ["--headless"]}))
    :firefox                         (DesiredCapabilities/firefox)
    :android                         (DesiredCapabilities/android)
    :html-unit                       (DesiredCapabilities/htmlUnit)
@@ -98,6 +101,8 @@
    :opera-blink                     (DesiredCapabilities/operaBlink)
    :safari                          (DesiredCapabilities/safari)
    ;; non-selenium builtins
+   :chrome/headless                 (doto (DesiredCapabilities/chrome)
+                                      (.setCapability "chromeOptions" {"args" ["--headless"]}))
    :browser-stack/samsung-galaxy-s4 (doto (DesiredCapabilities.)
                                       (.setCapability CapabilityType/LOGGING_PREFS default-logging-preferences)
                                       (.setCapability "browserName" "android")
@@ -105,13 +110,13 @@
                                       (.setCapability "device" "Samsung Galaxy S4")
                                       (.setCapability "browserstack.debug" "true"))})
 
-(defn ^DesiredCapabilities ->capabilities [m]
+(defn ^Capabilities ->capabilities [m]
   (cond
-    (instance? DesiredCapabilities m) m
-    (keyword? m)                      (*capabilities* m)
-    :else                             (DesiredCapabilities. m)))
+    (instance? Capabilities m) m
+    (keyword? m)               (*capabilities* m)
+    :else                      (DesiredCapabilities. m)))
 
-(defn ^DesiredCapabilities set-logging-capability [desired-capabilities m-or-instance]
+(defn ^Capabilities set-logging-capability [desired-capabilities m-or-instance]
   (doto (->capabilities desired-capabilities)
     (.setCapability CapabilityType/LOGGING_PREFS (map->logging-preferences m-or-instance))))
 
