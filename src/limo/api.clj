@@ -620,7 +620,7 @@
                           "nowrap", "open", "paused", "pubdate", "readonly", "required",
                           "reversed", "scoped", "seamless", "seeking", "selected", "spellcheck",
                           "truespeed", "willvalidate"]
-           webdriver-result (wait-for-else driver ["attribute" selector-or-element attr] nil
+           webdriver-result (wait-for-else driver ["read-attribute" attr] nil
                                            (.getAttribute (element driver selector-or-element) (name attr)))]
        (if (some #{attr} boolean-attrs)
          (when (= webdriver-result "true")
