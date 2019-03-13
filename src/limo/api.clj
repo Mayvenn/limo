@@ -78,7 +78,7 @@
 
 ;; Helpers
 
-(defmacro ^:private narrate [msg & args]
+(defmacro narrate [msg & args]
   `(when-let [m# ~msg]
      (log/info m# ~@args)))
 
