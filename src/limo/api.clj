@@ -78,7 +78,7 @@
 
 ;; Helpers
 
-(defmacro ^:private narrate [msg args]
+(defmacro ^:private narrate [msg & args]
   `(when-let [m# ~msg]
      (log/info m# ~@args)))
 
@@ -280,7 +280,7 @@
      ~(if (empty? narration)
         `(wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)
         `(do
-           (println ~@narration)
+           (narrate ~@narration)
            (wait-until ~driver (fn [] ~@body) *default-timeout* *default-interval*)))
      (catch TimeoutException te#
        ~default-value)))
@@ -673,7 +673,7 @@
   "
   ([dimensions-map] (window-resize *driver* dimensions-map))
   ([driver {:keys [width height] :as dimensions-map}]
-   (println "window-resize")
+   (narrate "window-resize")
    (-> driver
        .manage
        .window
@@ -688,7 +688,7 @@
   "
   ([] (refresh *driver*))
   ([driver]
-   (println "refresh")
+   (narrate "refresh")
    (-> driver .navigate .refresh)))
 
 (defn to
@@ -700,7 +700,7 @@
   "
   ([^String url] (to *driver* url))
   ([driver ^String url]
-   (println "to" url)
+   (narrate "to" url)
    (-> driver .navigate (.to url))))
 
 (defn current-url
@@ -712,7 +712,7 @@
   "
   ([] (current-url *driver*))
   ([^WebDriver driver]
-   (println "current-url")
+   (narrate "current-url")
    (.getCurrentUrl driver)))
 
 (defn options
@@ -758,12 +758,12 @@
 (defn current-url-contains?
   "Returns true if the current url contains some text"
   [substr]
-  (println "current-url-contains?" (pr-str substr))
+  (narrate "current-url-contains?" (pr-str substr))
   (let [result (try
                  (wait-until #(.contains (current-url) substr))
                  (catch TimeoutException te
                    false))]
-    (println "  -> " (pr-str result))
+    (narrate "  -> " (pr-str result))
     result))
 
 ;; Assert on Elements

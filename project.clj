@@ -26,7 +26,8 @@
   :profiles
   {:dev {:source-paths ["dev"]
          :dependencies [[pjstadig/humane-test-output "0.8.2"]
-                        [org.clojure/tools.namespace "0.2.11"]]
+                        [org.clojure/tools.namespace "0.2.11"]
+                        [log4j "1.2.17"]]
          :plugins [[lein-cljfmt "0.5.6"]
                    [lein-codox "0.10.3"]]
          :injections [(require 'pjstadig.humane-test-output)
