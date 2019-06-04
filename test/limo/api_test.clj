@@ -11,6 +11,8 @@
     (.removeAllAppenders l)
     (.addAppender l (org.apache.log4j.varia.NullAppender.))))
 
+(def header-text "httpbin.org\n 0.9.3 ")
+
 (deftest opening-chrome-headless
   (with-fresh-browser create-chrome-headless
     (to "https://httpbin.org")
@@ -28,27 +30,27 @@
 (deftest multiple-windows
   (with-fresh-browser create-chrome
     (to "https://httpbin.org")
-    (is (text= "h2" "httpbin.org\n0.9.2")
+    (is (text= "h2" header-text)
         (pr-str (text "h2")))
     (execute-script *driver* "window.open('https://httpbin.org/get');")
     (is (= 2 (count (all-windows))))
     (switch-to-window (last (all-windows)))
     (is (contains-text? "body" "text/html,application/xhtml+xml"))
     (switch-to-window (first (all-windows)))
-    (is (text= "h2" "httpbin.org\n 0.9.2 ")
+    (is (text= "h2" header-text)
         (pr-str (text "h2")))))
 
 (deftest without-implicit-driver
   (set-driver! nil) ;; just to be sure
   (let [driver (create-chrome)]
     (to driver "https://httpbin.org")
-    (is (text= driver "h2" "httpbin.org\n 0.9.2 ") (pr-str (text driver "h2")))
+    (is (text= driver "h2" header-text) (pr-str (text driver "h2")))
     (execute-script driver "window.open('https://httpbin.org/get');")
     (is (= 2 (count (all-windows driver))))
     (switch-to-window driver (last (all-windows driver)))
     (is (contains-text? driver "body" "text/html,application/xhtml+xml"))
     (switch-to-window driver (first (all-windows driver)))
-    (is (text= driver "h2" "httpbin.org\n 0.9.2 ") (pr-str (text driver "h2")))
+    (is (text= driver "h2" header-text) (pr-str (text driver "h2")))
     (click driver "a[href='/forms/post']")
     (is (text= driver "label" "Customer name:"))))
 
