@@ -22,6 +22,7 @@
            org.openqa.selenium.TakesScreenshot
            org.openqa.selenium.WebDriver
            org.openqa.selenium.WebElement
+           org.openqa.selenium.WebDriverException
            org.openqa.selenium.interactions.Actions
            [org.openqa.selenium.support.ui
             ExpectedCondition
@@ -510,18 +511,26 @@
   "Scrolls the browser to a given element so that it visible on the screen."
   ([selector-or-element] (scroll-to *driver* selector-or-element))
   ([driver selector-or-element]
-   (wait-until* #(exists? driver selector-or-element) {:driver driver})
-   (cond
-     (string? selector-or-element)
-     (execute-script driver
-                     (if (= FirefoxDriver (type *driver*))
-                       (format "document.querySelector(\"%s\").scrollIntoView();" selector-or-element)
-                       (format "document.querySelector(\"%s\").scrollIntoViewIfNeeded();" selector-or-element)))
-     (element? selector-or-element)
-     (execute-script driver (if (= FirefoxDriver (type *driver*))
-                              "arguments[0].scrollIntoView();"
-                              "arguments[0].scrollIntoViewIfNeeded();")
-                     selector-or-element))
+   (wait-until*
+    #(do (exists? driver selector-or-element)
+         (try
+           (cond
+             (string? selector-or-element)
+             (execute-script driver
+                             (if (= FirefoxDriver (type *driver*))
+                               (format "document.querySelector(\"%s\").scrollIntoView();" selector-or-element)
+                               (format "document.querySelector(\"%s\").scrollIntoViewIfNeeded();" selector-or-element)))
+             (element? selector-or-element)
+             (execute-script driver (if (= FirefoxDriver (type *driver*))
+                                      "arguments[0].scrollIntoView();"
+                                      "arguments[0].scrollIntoViewIfNeeded();")
+                             selector-or-element))
+           true
+           (catch WebDriverException _
+             ;; This occurs if the javascript fails to resolve an element, in which it throws:
+             ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoViewIfNeeded' of null
+             false)))
+    {:driver driver})
    selector-or-element))
 
 (defn click
