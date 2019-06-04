@@ -5,21 +5,21 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/tools.logging "0.4.0"]
-                 [org.seleniumhq.selenium/selenium-support "3.7.1"]
-                 [org.seleniumhq.selenium/selenium-api "3.7.1"]
-                 [org.seleniumhq.selenium/selenium-server "3.7.1"
+                 [org.seleniumhq.selenium/selenium-support "3.141.59"]
+                 [org.seleniumhq.selenium/selenium-api "3.141.59"]
+                 [org.seleniumhq.selenium/selenium-server "3.141.59"
                   :exclusions [org.seleniumhq.selenium/selenium-api
                                org.seleniumhq.selenium/selenium-support
                                org.eclipse.jetty/jetty-http
                                org.eclipse.jetty/jetty-io
                                org.eclipse.jetty/jetty-util]]
-                 [org.seleniumhq.selenium/selenium-java "3.7.1"
+                 [org.seleniumhq.selenium/selenium-java "3.141.59"
                   :exclusions [org.seleniumhq.selenium/selenium-api
                                org.seleniumhq.selenium/selenium-support
                                org.eclipse.jetty/jetty-http
                                org.eclipse.jetty/jetty-io
                                org.eclipse.jetty/jetty-util]]
-                 [org.seleniumhq.selenium/selenium-firefox-driver "3.7.1"]
+                 [org.seleniumhq.selenium/selenium-firefox-driver "3.141.59"]
                  [environ "1.1.0"]
                  [cheshire "5.8.0"]
                  [ring/ring-jetty-adapter "1.6.2"]]
