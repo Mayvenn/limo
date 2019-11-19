@@ -508,27 +508,38 @@
 ;; Act on Element
 
 (defn scroll-to
-  "Scrolls the browser to a given element so that it visible on the screen."
-  ([selector-or-element] (scroll-to *driver* selector-or-element))
-  ([driver selector-or-element]
+  "Scrolls the browser to a given element so that it visible on the screen.
+
+  WARNING:
+    Does not safely verify its inputs (since it passes along as javascript to the
+    browser)."
+  ([selector-or-element] (scroll-to *driver* selector-or-element nil))
+  ([driver selector-or-element] (scroll-to driver selector-or-element nil))
+  ([driver selector-or-element {:keys [behavior block inline]
+                                :or   {behavior "auto"
+                                       block    "start"
+                                       inline   "nearest"}}]
    (wait-until*
     #(do (exists? driver selector-or-element)
          (try
            (cond
              (string? selector-or-element)
              (execute-script driver
-                             (if (= FirefoxDriver (type *driver*))
-                               (format "document.querySelector(\"%s\").scrollIntoView();" selector-or-element)
-                               (format "document.querySelector(\"%s\").scrollIntoViewIfNeeded();" selector-or-element)))
+                             (format "document.querySelector('%s').scrollIntoView({behavior: '%s', block: '%s', inline: '%s'});"
+                                     selector-or-element
+                                     behavior
+                                     block
+                                     inline))
              (element? selector-or-element)
-             (execute-script driver (if (= FirefoxDriver (type *driver*))
-                                      "arguments[0].scrollIntoView();"
-                                      "arguments[0].scrollIntoViewIfNeeded();")
+             (execute-script driver (format "arguments[0].scrollIntoView({behavior: '%s', block: '%s', inline: '%s'});"
+                                            behavior
+                                            block
+                                            inline)
                              selector-or-element))
            true
            (catch WebDriverException _
              ;; This occurs if the javascript fails to resolve an element, in which it throws:
-             ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoViewIfNeeded' of null
+             ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoView' of null
              false)))
     {:driver driver})
    selector-or-element))
