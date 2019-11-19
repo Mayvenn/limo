@@ -23,6 +23,8 @@
                  [environ "1.1.0"]
                  [cheshire "5.8.0"]
                  [ring/ring-jetty-adapter "1.6.2"]]
+  :deploy-repositories [["releases" :clojars]
+                        ["snapshots" :clojars]]
   :profiles
   {:dev {:source-paths ["dev"]
          :dependencies [[pjstadig/humane-test-output "0.8.2"]
