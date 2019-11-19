@@ -95,3 +95,14 @@
     (click-when-visible "#operations-tag-Cookies")
     (click-when-visible {:css ".opblock-tag-section.is-open > div:nth-child(2)  > #operations-Cookies-get_cookies"})
     (is (= (current-url) "https://httpbin.org/#/Cookies/get_cookies"))))
+
+(deftest send-keys-drops-nils
+  (testing "Newer selenium versions rejects empty CharSequences"
+    (with-fresh-browser create-chrome
+      (to "http://httpbin.org/forms/post")
+      ;; fill-form will implicitly send empty sequence by deleting nothing
+      (fill-form {"[name=custname]" "yo"})
+      (is (value= "[name=custname]" "yo"))
+
+      (fill-form {"[name=custname]" ""})
+      (is (value= "[name=custname]" "")))))

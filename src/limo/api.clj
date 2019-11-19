@@ -599,10 +599,12 @@
   "
   ([selector-or-element s] (send-keys *driver* selector-or-element s))
   ([driver selector-or-element s]
-   (wait-for driver nil
-             (.sendKeys (element driver selector-or-element)
-                        (into-array CharSequence (if (vector? s) s [s])))
-             true)))
+   ;; Newer selenium versions no longer allow empty CharSequences for sendKeys
+   (when (not-empty s)
+     (wait-for driver nil
+               (.sendKeys (element driver selector-or-element)
+                          (into-array CharSequence (if (vector? s) s [s])))
+               true))))
 
 (def input-text
   "Alias to [[send-keys]]. Sends keypresses to a given element. Types on a given input field.
