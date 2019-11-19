@@ -55,9 +55,16 @@
     (is (text= driver "label" "Customer name:"))))
 
 (deftest network
-  (with-fresh-browser (partial create-chrome (set-logging-capability (->capabilities :chrome)
-                                                                     {:browser     :all
-                                                                      :performance :all}))
+  (with-fresh-browser (partial create-chrome (doto (->capabilities :chrome)
+                                               ;; for chromedrivers <76.x.x
+                                               (set-logging-capability {:browser     :all
+                                                                        :performance :all
+                                                                        :profiler    :all})
+                                               ;; for chromedrivers >=76.x.x
+                                               (.setCapability "goog:loggingPrefs"
+                                                               (map->logging-preferences {:browser     :all
+                                                                                          :performance :all
+                                                                                          :profiler    :all}))))
     (to "https://httpbin.org")
     (execute-script *driver* "var r = new XMLHttpRequest(); r.open(\"GET\", \"/get\", null); r.send();")
     (let [logs (atom [])]
