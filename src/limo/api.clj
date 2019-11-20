@@ -341,7 +341,7 @@
 
   Returns:
     The return value is whatever the return value of the javascript eval
-    expression, which are also constrainted to the same times that can be
+    expression, which are also constrained to the same types that can be
     translated as a js-args value.
 
   IMMEDIATE:
@@ -507,6 +507,40 @@
 
 ;; Act on Element
 
+(defn ^:private js-resolve [selector-or-element]
+  (if (string? selector-or-element)
+    "document.querySelector(arguments[0])"
+    "arguments[0]"))
+
+(defn ^:private on-screen? [driver selector-or-element]
+  ;;  An element, relative to window
+  ;; -----------------------------
+  ;;   |<pos.top   |
+  ;;   |           |
+  ;; ++++++++++++++|++++
+  ;; +             |   +
+  ;; +             |   +
+  ;; +  pos.bottom>|   +
+  ;; +             |   +
+  ;; +             |   +
+  ;; +             |   +
+  ;; +             |   +
+  ;; +++++++++++++++++++
+  ;;
+  (try
+    (.booleanValue
+     (execute-script driver (str "var pos = " (js-resolve selector-or-element)
+                                 ".getBoundingClientRect();"
+                                 "return (0 <= pos.top && pos.top <= window.innerHeight) || (0 <= pos.bottom && pos.bottom <= window.innerHeight);")
+                     (if (string? selector-or-element)
+                       selector-or-element
+                       (element selector-or-element))))
+    (catch WebDriverException e
+      (.printStackTrace e)
+      ;; This occurs if the javascript fails to resolve an element, in which it throws:
+      ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoView' of null
+      false)))
+
 (defn scroll-to
   "Scrolls the browser to a given element so that it visible on the screen.
 
@@ -517,32 +551,28 @@
   ([driver selector-or-element] (scroll-to driver selector-or-element nil))
   ([driver selector-or-element {:keys [behavior block inline]
                                 :or   {behavior "auto"
-                                       block    "start"
-                                       inline   "nearest"}}]
+                                       block    "center"
+                                       inline   "center"}}]
    (let [behavior (str behavior)
-         block (str block)
-         inline (str inline)]
+         block    (str block)
+         inline   (str inline)]
      (wait-until*
       #(and (exists? driver selector-or-element)
-            (try
-              (cond
-                (string? selector-or-element)
-                (execute-script driver "document.querySelector(arguments[0]).scrollIntoView({behavior: arguments[1], block: arguments[2], inline: arguments[3]}); "
-                                (str selector-or-element)
-                                behavior
-                                block
-                                inline)
-                (element? selector-or-element)
-                (execute-script driver "arguments[0].scrollIntoView({behavior: arguments[1], block: arguments[2], inline: arguments[3]});"
-                                selector-or-element
-                                behavior
-                                block
-                                inline))
-              true
-              (catch WebDriverException e
-                ;; This occurs if the javascript fails to resolve an element, in which it throws:
-                ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoView' of null
-                false)))
+            (or
+             (on-screen? driver selector-or-element)
+             (try
+               (execute-script driver (str (js-resolve selector-or-element) ".scrollIntoView({behavior: arguments[1], block: arguments[2], inline: arguments[3]}); ")
+                               (if (string? selector-or-element)
+                                 selector-or-element
+                                 (element selector-or-element))
+                               behavior
+                               block
+                               inline)
+               true
+               (catch WebDriverException e
+                 ;; This occurs if the javascript fails to resolve an element, in which it throws:
+                 ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoView' of null
+                 false))))
       {:driver driver}))
    selector-or-element))
 

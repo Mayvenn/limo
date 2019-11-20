@@ -3,7 +3,8 @@
             [limo.api :refer :all]
             [limo.driver :refer :all]
             [limo.test :refer :all]
-            [limo.java :refer :all]))
+            [limo.java :refer :all]
+            [limo.api :as api]))
 
 (comment
   ;; eval this form to verify the ability to disable logging
@@ -69,7 +70,7 @@
     (execute-script *driver* "var r = new XMLHttpRequest(); r.open(\"GET\", \"/get\", null); r.send();")
     (let [logs (atom [])]
       (read-performance-logs-until-test-pass! [logs]
-        (is (first (filter (comp #{"Network.requestWillBeSent"} :method :message :message) @logs)))))))
+                                              (is (first (filter (comp #{"Network.requestWillBeSent"} :method :message :message) @logs)))))))
 
 (deftest test-various-by-locators
   (with-fresh-browser create-chrome
@@ -106,3 +107,19 @@
 
       (fill-form {"[name=custname]" ""})
       (is (value= "[name=custname]" "")))))
+
+(deftest implicit-scrolling-only-scrolls-if-needed
+  (with-fresh-browser create-chrome
+    (window-resize {:width 780 :height 200})
+    (to "http://httpbin.org/forms/post")
+
+    (testing "does not scroll if on screen"
+      (#'limo.api/on-screen? api/*driver* "[name=size][value=small]")
+
+      (click "[name=size][value=small]")
+      (is (zero? (.doubleValue (execute-script *driver* "return window.scrollY")))))
+    (testing "scrolls if the element is not on screen, attempting to center the element"
+      (click "[name=topping][value=mushroom]")
+      (is (< 100 (.doubleValue (execute-script *driver* "return window.scrollY")))
+          "window did not scroll")
+      (is (< 100 (.doubleValue (execute-script *driver* "return document.querySelector('[name=topping][value=mushroom]').getBoundingClientRect().top")))))))
