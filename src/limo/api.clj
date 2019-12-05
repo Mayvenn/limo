@@ -23,6 +23,8 @@
            org.openqa.selenium.WebDriver
            org.openqa.selenium.WebElement
            org.openqa.selenium.WebDriverException
+           org.openqa.selenium.ElementClickInterceptedException
+           org.openqa.selenium.NoSuchElementException
            org.openqa.selenium.interactions.Actions
            [org.openqa.selenium.support.ui
             ExpectedCondition
@@ -62,6 +64,12 @@
 
 (def ^:dynamic *default-interval*
   0)
+
+(def ^:dynamic *ignored-exceptions*
+  "A sequence of exception classes to ignore and retry for polling via [[wait-until]]."
+  [StaleElementReferenceException
+   ElementClickInterceptedException
+   NoSuchElementException])
 
 ;; Internal to wait-for to prevent nesting poll loops, which creates flakier builds.
 (def ^:private ^:dynamic *is-waiting* false)
@@ -197,12 +205,13 @@
 (defn ^:private wait-until* ;; TODO(jeff): promote to replace wait-until fn
   ([pred] (wait-until* pred {}))
   ([pred options]
-   (let [{:keys [driver timeout interval poll? suppress-non-poll-exception?]
-          :or {driver *driver*
-               timeout *default-timeout*
-               interval *default-interval*
-               poll? *is-waiting*
-               suppress-non-poll-exception? *ignore-nested-wait-exception*}}
+   (let [{:keys [driver timeout interval poll? suppress-non-poll-exception? ignored-exceptions]
+          :or   {driver                       *driver*
+                 timeout                      *default-timeout*
+                 interval                     *default-interval*
+                 poll?                        *is-waiting*
+                 suppress-non-poll-exception? *ignore-nested-wait-exception*
+                 ignored-exceptions           *ignored-exceptions*}}
          options]
      (if poll?
        (if suppress-non-poll-exception?
@@ -210,8 +219,9 @@
          (or (pred) (throw (StaleElementReferenceException. "Inside another wait-until. Forcing retry."))))
        (binding [*is-waiting* true]
          (let [return-value (atom nil)
-               wait (doto (WebDriverWait. driver (/ timeout 1000) interval)
-                      (.ignoring StaleElementReferenceException))]
+               wait         (WebDriverWait. driver (/ timeout 1000) interval)]
+           (doseq [cls ignored-exceptions]
+             (.ignoring wait cls))
            (.until wait (proxy [ExpectedCondition] []
                           (apply [d] (reset! return-value (pred)))))
            @return-value))))))
@@ -246,7 +256,7 @@
     held. An action like \"click this button\" relies on the button existing
     before it can be clicked.
 
-    StaleElementReferenceException are captured and indicate a falsy return
+    [[*ignored-exceptions*]] are captured and indicate a falsy return
     value of `pred`. Other exceptions will be rethrown.
   "
   ([pred] (wait-until* pred))
