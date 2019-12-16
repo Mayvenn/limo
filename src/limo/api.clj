@@ -754,6 +754,11 @@
                      (get class)
                      boolean)))
 
+(defn has-not-class
+  "Returns a true if a given element does not have a class on it."
+  [q class]
+  (wait-for-else *driver* ["has-class"] (not (has-class q class))))
+
 (defn window-size
   "Returns the current window's size
 
