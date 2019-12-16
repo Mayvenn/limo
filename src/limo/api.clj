@@ -69,7 +69,8 @@
   "A sequence of exception classes to ignore and retry for polling via [[wait-until]]."
   [StaleElementReferenceException
    ElementClickInterceptedException
-   NoSuchElementException])
+   NoSuchElementException
+   TimeoutException])
 
 ;; Internal to wait-for to prevent nesting poll loops, which creates flakier builds.
 (def ^:private ^:dynamic *is-waiting* false)
@@ -587,12 +588,18 @@
    selector-or-element))
 
 (defn click
-  "Clicks on a given element."
+  "Clicks on a given element.
+
+  Unlike (.click (element *driver* selector-or-element)), this click does a few more operations:
+   - Attempts to scroll the viewport to the element
+   - Waits for the element to be clickable (see [[wait-until-clickable]])
+   - Then clicks the element
+  "
   ([selector-or-element] (click *driver* selector-or-element))
   ([driver selector-or-element]
-   (scroll-to driver selector-or-element)
-   (wait-until-clickable driver selector-or-element *default-timeout*)
    (wait-for driver ["click" selector-or-element]
+             (scroll-to driver selector-or-element)
+             (wait-until-clickable driver selector-or-element *default-timeout*)
              (.click (element driver selector-or-element))
              true)))
 
@@ -612,8 +619,8 @@
   "
   ([selector-or-element value] (select-by-text *driver* selector-or-element value))
   ([driver selector-or-element value]
-   (scroll-to driver selector-or-element)
    (wait-for driver ["select-by-text" selector-or-element value]
+             (scroll-to driver selector-or-element)
              (doto (Select. (element driver selector-or-element))
                (.selectByVisibleText value))
              selector-or-element)))
@@ -626,8 +633,8 @@
   "
   ([selector-or-element value] (select-by-value *driver* selector-or-element value))
   ([driver selector-or-element value]
-   (scroll-to driver selector-or-element)
    (wait-for driver ["select-by-value" selector-or-element value]
+             (scroll-to driver selector-or-element)
              (doto (Select. (element driver selector-or-element))
                (.selectByValue value))
              selector-or-element)))
