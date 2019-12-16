@@ -745,10 +745,14 @@
 (defn has-class
   "Returns a true if a given element has a class on it."
   [q class]
-  (-> (element q)
-      (.getAttribute "Class")
-      (or "")
-      (.contains class)))
+  (wait-for-else *driver* ["has-class"]
+                 (-> (element q)
+                     (.getAttribute "Class")
+                     (or "")
+                     (string/split #" +")
+                     set
+                     (get class)
+                     boolean)))
 
 (defn window-size
   "Returns the current window's size
