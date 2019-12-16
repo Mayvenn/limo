@@ -549,28 +549,57 @@
     (catch WebDriverException e
       (.printStackTrace e)
       ;; This occurs if the javascript fails to resolve an element, in which it throws:
-      ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'scrollIntoView' of null
+      ;; org.openqa.selenium.WebDriverException: unknown error: Cannot read property 'getBoundingClientRect' of null
       false)))
 
 (defn scroll-to
   "Scrolls the browser to a given element so that it visible on the screen.
 
+  NOTE:
+    This calls the underlying DOM API, Element.scrollIntoView(). See MDN for more information
+    https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollTo
+
+  Parameters:
+    `behavior`: how should the scrolling to element behave
+      - 'auto' indicates instantaneous scrolling to element. This is the default value.
+      - 'smooth' animates the scrolling from the current location to the target
+                 element. This may be better at triggering InteractionObservers
+                 at the cost of running time.
+    `block`: where is the target element allowed to be vertically in the viewport
+      - 'start' keeps the target element at the very top of the viewport (when possible)
+      - 'center' keeps the target element at the center of the viewport (when
+                 possible). This is the default to minimize sticky top/bottom
+                 elements from overlapping with the target element.
+      - 'end' keeps the target element at the end of the view port (when possible)
+      - 'nearest' keeps the target element either at the start or end, whichever is closest (when possible)
+    `inline`: where is the target element allowed to be horizontally in the viewport
+      - 'start' keeps the target element at the very top of the viewport (when possible)
+      - 'center' keeps the target element at the center of the viewport (when
+                 possible). This is the default to minimize sticky top/bottom
+                 elements from overlapping with the target element.
+      - 'end' keeps the target element at the end of the view port (when possible)
+      - 'nearest' keeps the target element either at the start or end, whichever is closest (when possible)
+    `force?`: scroll-to defaults to not doing anything if the element is already
+              in the viewport. Setting this to true will override that behavior
+              and always attempt to scroll the element.
+
   WARNING:
-    Does not safely verify its inputs (since it passes along as javascript to the
-    browser)."
+    Input parameters must conform to [[execute-script]] limitations."
   ([selector-or-element] (scroll-to *driver* selector-or-element nil))
   ([driver selector-or-element] (scroll-to driver selector-or-element nil))
-  ([driver selector-or-element {:keys [behavior block inline]
+  ([driver selector-or-element {:keys [behavior block inline force?]
                                 :or   {behavior "auto"
                                        block    "center"
-                                       inline   "center"}}]
+                                       inline   "center"
+                                       force?   false}}]
    (let [behavior (str behavior)
          block    (str block)
          inline   (str inline)]
      (wait-until*
       #(and (exists? driver selector-or-element)
             (or
-             (on-screen? driver selector-or-element)
+             (and (not force?)
+                  (on-screen? driver selector-or-element))
              (try
                (execute-script driver (str (js-resolve selector-or-element) ".scrollIntoView({behavior: arguments[1], block: arguments[2], inline: arguments[3]}); ")
                                (if (string? selector-or-element)
