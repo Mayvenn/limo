@@ -223,11 +223,14 @@
        (binding [*is-waiting* true]
          (let [return-value (atom nil)
                wait         (WebDriverWait. driver (/ timeout 1000) interval)]
-           (doseq [cls ignored-exceptions]
-             (.ignoring wait cls))
-           (.until wait (proxy [ExpectedCondition] []
-                          (apply [d] (reset! return-value (pred)))))
-           @return-value))))))
+           (try
+             (doseq [cls ignored-exceptions]
+               (.ignoring wait cls))
+             (.until wait (proxy [ExpectedCondition] []
+                            (apply [d] (reset! return-value (pred)))))
+             @return-value
+             (catch TimeoutException te
+               (pred)))))))))
 
 (defn wait-until
   "Runs a given predicate pred repeatedly until a timeout occurs or pred returns
@@ -274,9 +277,10 @@
   "A specialized version of wait-until that waits until an element is clickable."
   ([selector] (wait-until-clickable *driver* selector *default-timeout*))
   ([driver selector timeout]
-   (let [wait (doto (WebDriverWait. driver (/ timeout 1000) 0)
-                (.ignoring StaleElementReferenceException))]
-     (.until wait (ExpectedConditions/elementToBeClickable (by selector))))))
+   (wait-until* driver
+                #(.isDisplayed (element selector))
+                timeout
+                *default-interval*)))
 
 (defmacro wait-for
   "A specialized version of wait-until that includes narration (printing to stdout) the action that is taken."
@@ -630,9 +634,9 @@
   ([driver selector-or-element]
    (wait-for driver ["click" selector-or-element]
              (scroll-to driver selector-or-element)
-             (wait-until-clickable driver selector-or-element *default-timeout*)
-             (.click (element driver selector-or-element))
-             true)))
+             (when (.isDisplayed (element driver selector-or-element))
+               (.click (element driver selector-or-element))
+               true))))
 
 (def submit
   "Alias to [[click]]. Typically reads nice when referring to submit buttons."
