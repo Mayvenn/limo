@@ -24,6 +24,7 @@
            org.openqa.selenium.WebElement
            org.openqa.selenium.WebDriverException
            org.openqa.selenium.ElementClickInterceptedException
+           org.openqa.selenium.ElementNotInteractableException
            org.openqa.selenium.NoSuchElementException
            org.openqa.selenium.interactions.Actions
            [org.openqa.selenium.support.ui
@@ -70,7 +71,8 @@
   [StaleElementReferenceException
    ElementClickInterceptedException
    NoSuchElementException
-   TimeoutException])
+   TimeoutException
+   ElementNotInteractableException])
 
 ;; Internal to wait-for to prevent nesting poll loops, which creates flakier builds.
 (def ^:private ^:dynamic *is-waiting* false)
@@ -1032,7 +1034,6 @@
   ([name dir-f] (save-screenshot (str name ".png") dir-f)))
 
 ;; Window Size
-
 (defn with-window-size*
   "Use [[with-window-size]] instead."
   ([new-size actions-fn]
