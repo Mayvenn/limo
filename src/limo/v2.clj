@@ -315,7 +315,7 @@
         text-value          (gensym "text-value")
         dimensions-map      (gensym "dimensions-map")
         ctx                 {:driver            driver
-                             :underyling-driver underlying-driver}
+                             :other-fields      record-fields}
         every               (partial (eval every-form) ctx)
         method-pair         (fn [form]
                               [(.getName ^clojure.lang.Symbol (first form))
