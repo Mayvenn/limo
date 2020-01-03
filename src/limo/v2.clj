@@ -263,36 +263,34 @@
 (defn form-selector-or-element [form]
   (let [third #(nth % 2)]
     (condp = (first form)
-      `find-first-element (third form)
-      `find-elements (third form)
-      `execute-script nil
-      `close nil
-      `delete-cookies nil
-      `switch-to-frame (third form)
-      `switch-to-main-page nil
-      `current-window-size nil
+      `find-first-element      (third form)
+      `find-elements           (third form)
+      `execute-script          nil
+      `close                   nil
+      `delete-cookies          nil
+      `switch-to-frame         (third form)
+      `switch-to-main-page     nil
+      `current-window-size     nil
       `set-current-window-size nil
-      `all-window-ids nil
-      `active-window-id nil
-      `read-logs! nil
-      `click (third form)
-      `select-by-text (third form)
-      `select-by-value (third form)
-      `select-options (third form)
-      `send-keys (third form)
-      `tagname (third form)
-      `inner-text (third form)
-      `attribute (third form)
-      `refresh nil
-      `navigate-to nil
-      `current-url nil
-
-      `visible? (third form)
-      `selected? (third form)
-      `input-value (third form)
-      `set-checkbox (third form)
-
-      `take-screenshot nil)))
+      `all-window-ids          nil
+      `active-window-id        nil
+      `read-logs!              nil
+      `click                   (third form)
+      `select-by-text          (third form)
+      `select-by-value         (third form)
+      `select-options          (third form)
+      `send-keys               (third form)
+      `tagname                 (third form)
+      `inner-text              (third form)
+      `attribute               (third form)
+      `refresh                 nil
+      `navigate-to             nil
+      `current-url             nil
+      `visible?                (third form)
+      `selected?               (third form)
+      `input-value             (third form)
+      `set-checkbox            (third form)
+      `take-screenshot         nil)))
 
 (defmacro ^{:style/indent :defrecord} defderiveddriver
   [name
