@@ -121,9 +121,9 @@
     (.setCapability CapabilityType/LOGGING_PREFS (map->logging-preferences m-or-instance))))
 
 (def keyword->output-type
-  {:file OutputType/FILE
+  {:file   OutputType/FILE
    :base64 OutputType/BASE64
-   :bytes OutputType/BYTES})
+   :bytes  OutputType/BYTES})
 
 (defn ^OutputType ->output-type
   "Coerces a keyword to selenium OutputType"
