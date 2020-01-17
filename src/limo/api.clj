@@ -631,9 +631,12 @@
    - Then clicks the element
   "
   ([selector-or-element] (click *driver* selector-or-element))
-  ([driver selector-or-element]
+  ([driver selector-or-element] (click *driver* selector-or-element nil))
+  ([driver selector-or-element {:keys [scroll-options scroll?]
+                                :or   {scroll? true}}]
    (wait-for driver ["click" selector-or-element]
-             (scroll-to driver selector-or-element)
+             (when scroll?
+               (scroll-to driver selector-or-element scroll-options))
              (when (.isDisplayed (element driver selector-or-element))
                (.click (element driver selector-or-element))
                true))))
