@@ -224,13 +224,13 @@
          (let [return-value (atom nil)
                wait         (WebDriverWait. driver (/ timeout 1000) interval)]
            (try
-             (doseq [cls ignored-exceptions]
-               (.ignoring wait cls))
+             (.ignoreAll wait ignored-exceptions)
              (.until wait (proxy [ExpectedCondition] []
                             (apply [d] (reset! return-value (pred)))))
              @return-value
              (catch TimeoutException te
-               (pred)))))))))
+               (binding [*ignore-nested-wait-exception* true]
+                 (pred))))))))))
 
 (defn wait-until
   "Runs a given predicate pred repeatedly until a timeout occurs or pred returns
