@@ -1,0 +1,20 @@
+name: Clojure CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    services:
+      selenium:
+        image: selenium/standalone-chrome
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install dependencies
+      run: lein deps
+    - name: Run tests
+      run: lein test
+      env:
+        LIMO_REMOTE_SELENIUM_HUB_URL: http://localhost:4444/wd/hub/
