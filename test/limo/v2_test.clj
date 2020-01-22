@@ -5,18 +5,8 @@
 
 (def header-text "httpbin.org\n 0.9.3 ")
 
-(deftest opening-chrome-headless
-  (with-open [d (v2/create-driver :chrome nil)]
-    (is d "driver wasn't created properly")
-    (v2/navigate-to d "https://httpbin.org")
-    (v2/click d "a[href='/forms/post']")
-    (is (v2/poll d
-                 (= (v2/inner-text d "label") "Customer name:"))
-        (pr-str (v2/inner-text d "label")))))
-
-
-(deftest opening-chrome-headless-with-polling-driver
-  (with-open [d (v2/->PollingDriver (v2/create-driver :chrome nil)
+(deftest opening-chrome-with-polling-driver
+  (with-open [d (v2/->PollingDriver (v2/create-driver :remote/chrome nil)
                                     3000
                                     500)]
     (is d "driver wasn't created properly")

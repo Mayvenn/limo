@@ -15,6 +15,7 @@
            org.openqa.selenium.remote.RemoteWebDriver
            org.openqa.selenium.chrome.ChromeDriver
            org.openqa.selenium.firefox.FirefoxDriver
+           java.net.URL
            java.awt.image.BufferedImage
            java.io.ByteArrayInputStream
            javax.imageio.ImageIO))
@@ -368,20 +369,34 @@
 (defmacro poll [driver form]
   `(v1/wait-until (selenium-driver ~driver) (fn [] (boolean ~form)) v1/*default-timeout* v1/*default-interval*))
 
+(defn- remote-addr [{:keys [remote-address]}]
+  (or remote-address
+      (get (System/getenv) "LIMO_REMOTE_SELENIUM_HUB_URL")))
+
 (defmulti create-driver (fn dispatch [type options] type))
-(defmethod create-driver :remote create-driver--remote [type {:keys [remote-address capabilities]}]
-  (if-let [hub-url remote-address]
+(defmethod create-driver :remote create-driver--remote
+  [type {:keys [remote-address capabilities] :as opt}]
+  (if-let [hub-url (remote-addr opt)]
     (RemoteWebDriver. (str hub-url) (java/->capabilities capabilities))
     (RemoteWebDriver. (java/->capabilities capabilities))))
 
-(defmethod create-driver :chrome create-driver--chrome [type {:keys [capabilities]}]
+(defmethod create-driver :chrome create-driver--chrome
+  [type {:keys [capabilities]}]
   (ChromeDriver. (java/->capabilities (or capabilities :chrome))))
 
-(defmethod create-driver :chrome/headless create-driver--chrome-headless [type _]
+(defmethod create-driver :chrome/headless create-driver--chrome-headless
+  [type _]
   (ChromeDriver. (java/->capabilities :chrome/headless)))
 
-(defmethod create-driver :firefox create-driver--firefox [type {:keys [capabilities]}]
+(defmethod create-driver :firefox create-driver--firefox
+  [type {:keys [capabilities]}]
   (FirefoxDriver. (java/->capabilities (or capabilities :firefox))))
+
+(defmethod create-driver :remote/chrome create-driver--remote-or-chrome
+  [type {:keys [remote-address capabilities] :as opt}]
+  (if-let [hub-url (remote-addr opt)]
+    (RemoteWebDriver. (URL. (str hub-url)) (java/->capabilities (or capabilities :chrome)))
+    (ChromeDriver. (java/->capabilities (or capabilities :chrome)))))
 
 (defn- log-queries [ctx form]
   `(do

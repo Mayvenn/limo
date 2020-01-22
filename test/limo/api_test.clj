@@ -14,22 +14,29 @@
 
 (def header-text "httpbin.org\n 0.9.3 ")
 
-(deftest opening-chrome-headless
-  (with-fresh-browser create-chrome-headless
-    (to "https://httpbin.org")
-    (click "a[href='/forms/post']")
-    (is (text= "label" "Customer name:")
-        (pr-str (text "label")))))
+(defn remote-browser? []
+  (boolean (get (System/getenv) "LIMO_REMOTE_SELENIUM_HUB_URL")))
+
+(defn create-browser
+  ([]
+   (if-let [url (get (System/getenv) "LIMO_REMOTE_SELENIUM_HUB_URL")]
+     (create-remote url (->capabilities :chrome))
+     (create-chrome)))
+  ([capabilities]
+   (if-let [url (get (System/getenv) "LIMO_REMOTE_SELENIUM_HUB_URL")]
+     (create-remote url (->capabilities capabilities))
+     (create-chrome capabilities))))
 
 (deftest opening-a-browser
-  (with-fresh-browser create-chrome
+  (with-fresh-browser create-browser
     (to "https://httpbin.org")
+    (Thread/sleep 1000) ;; the click handler is sometimes late...
     (click "a[href='/forms/post']")
     (is (text= "label" "Customer name:")
         (pr-str (text "label")))))
 
 (deftest multiple-windows
-  (with-fresh-browser create-chrome
+  (with-fresh-browser create-browser
     (to "https://httpbin.org")
     (is (text= "h2" header-text)
         (pr-str (text "h2")))
@@ -43,7 +50,7 @@
 
 (deftest without-implicit-driver
   (set-driver! nil) ;; just to be sure
-  (let [driver (create-chrome)]
+  (let [driver (create-browser)]
     (to driver "https://httpbin.org")
     (is (text= driver "h2" header-text) (pr-str (text driver "h2")))
     (execute-script driver "window.open('https://httpbin.org/get');")
@@ -56,16 +63,16 @@
     (is (text= driver "label" "Customer name:"))))
 
 (deftest network
-  (with-fresh-browser (partial create-chrome (doto (->capabilities :chrome)
-                                               ;; for chromedrivers <76.x.x
-                                               (set-logging-capability {:browser     :all
-                                                                        :performance :all
-                                                                        :profiler    :all})
-                                               ;; for chromedrivers >=76.x.x
-                                               (.setCapability "goog:loggingPrefs"
-                                                               (map->logging-preferences {:browser     :all
-                                                                                          :performance :all
-                                                                                          :profiler    :all}))))
+  (with-fresh-browser (partial create-browser (doto (->capabilities :chrome)
+                                                ;; for chromedrivers <76.x.x
+                                                (set-logging-capability {:browser     :all
+                                                                         :performance :all
+                                                                         :profiler    :all})
+                                                ;; for chromedrivers >=76.x.x
+                                                (.setCapability "goog:loggingPrefs"
+                                                                (map->logging-preferences {:browser     :all
+                                                                                           :performance :all
+                                                                                           :profiler    :all}))))
     (to "https://httpbin.org")
     (execute-script *driver* "var r = new XMLHttpRequest(); r.open(\"GET\", \"/get\", null); r.send();")
     (let [logs (atom [])]
@@ -73,7 +80,7 @@
                                               (is (first (filter (comp #{"Network.requestWillBeSent"} :method :message :message) @logs)))))))
 
 (deftest test-various-by-locators
-  (with-fresh-browser create-chrome
+  (with-fresh-browser create-browser
     (to "https://httpbin.org")
     (click-when-visible "#operations-tag-Anything")
     (click-when-visible {:partial-link-text "anything"})
@@ -99,7 +106,7 @@
 
 (deftest send-keys-drops-nils
   (testing "Newer selenium versions rejects empty CharSequences"
-    (with-fresh-browser create-chrome
+    (with-fresh-browser create-browser
       (to "http://httpbin.org/forms/post")
       ;; fill-form will implicitly send empty sequence by deleting nothing
       (fill-form {"[name=custname]" "yo"})
@@ -109,15 +116,20 @@
       (is (value= "[name=custname]" "")))))
 
 (deftest implicit-scrolling-only-scrolls-if-needed
-  (with-fresh-browser create-chrome
-    (window-resize {:width 780 :height 200})
+  (with-fresh-browser create-browser
+    (window-resize {:width 780
+                    :height (if (remote-browser?)
+                              350 ;; remote browser includes chrome window in size, where chrome browser does not
+                              200)})
     (to "http://httpbin.org/forms/post")
 
     (testing "does not scroll if on screen"
-      (#'limo.api/on-screen? api/*driver* "[name=size][value=small]")
+      (is (#'limo.api/on-screen? api/*driver* "[name=size][value=small]"))
 
       (click "[name=size][value=small]")
-      (is (zero? (.doubleValue (execute-script *driver* "return window.scrollY")))))
+      (let [value (execute-script *driver* "return window.scrollY")]
+        (is (zero? (.doubleValue value))
+            (pr-str value))))
     (testing "scrolls if the element is not on screen, attempting to center the element"
       (click "[name=topping][value=mushroom]")
       (is (< 100 (.doubleValue (execute-script *driver* "return window.scrollY")))
