@@ -1,4 +1,7 @@
-# Limo [![CircleCI](https://circleci.com/gh/Mayvenn/limo/tree/master.svg?style=svg&circle-token=e216b48367b08611e35c36e8531bdaa93b349be6)](https://circleci.com/gh/Mayvenn/limo/tree/master)
+# Limo ![Actions](https://github.com/mayvenn/limo/workflows/Clojure%20CI/badge.svg)
+
+
+
 
 [API Docs](http://mayvenn.github.io/limo)
 
