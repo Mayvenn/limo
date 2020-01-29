@@ -12,7 +12,7 @@
     (.removeAllAppenders l)
     (.addAppender l (org.apache.log4j.varia.NullAppender.))))
 
-(def header-text "httpbin.org\n 0.9.3 ")
+(def header-text "httpbin.org\n 0.9.2 ")
 
 (defn remote-browser? []
   (boolean (get (System/getenv) "LIMO_REMOTE_SELENIUM_HUB_URL")))

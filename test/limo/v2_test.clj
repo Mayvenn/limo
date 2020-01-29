@@ -3,7 +3,7 @@
             [clojure.test :refer [deftest is testing]]))
 
 
-(def header-text "httpbin.org\n 0.9.3 ")
+(def header-text "httpbin.org\n 0.9.2 ")
 
 (deftest opening-chrome-with-polling-driver
   (with-open [d (v2/->PollingDriver (v2/create-driver :remote/chrome nil)
