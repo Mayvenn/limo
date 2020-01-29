@@ -119,7 +119,7 @@
   (with-fresh-browser create-browser
     (window-resize {:width 780
                     :height (if (remote-browser?)
-                              350 ;; remote browser includes chrome window in size, where chrome browser does not
+                              250 ;; remote browser includes chrome window in size, where chrome browser does not
                               200)})
     (to "http://httpbin.org/forms/post")
 
