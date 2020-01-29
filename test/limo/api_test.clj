@@ -118,9 +118,7 @@
 (deftest implicit-scrolling-only-scrolls-if-needed
   (with-fresh-browser create-browser
     (window-resize {:width 780
-                    :height (if (remote-browser?)
-                              250 ;; remote browser includes chrome window in size, where chrome browser does not
-                              200)})
+                    :height 200})
     (to "http://httpbin.org/forms/post")
 
     (testing "does not scroll if on screen"
@@ -132,6 +130,6 @@
             (pr-str value))))
     (testing "scrolls if the element is not on screen, attempting to center the element"
       (click "[name=topping][value=mushroom]")
-      (is (< 100 (.doubleValue (execute-script *driver* "return window.scrollY")))
+      (is (< 20 (.doubleValue (execute-script *driver* "return window.scrollY")))
           "window did not scroll")
-      (is (< 100 (.doubleValue (execute-script *driver* "return document.querySelector('[name=topping][value=mushroom]').getBoundingClientRect().top")))))))
+      (is (< 20 (.doubleValue (execute-script *driver* "return document.querySelector('[name=topping][value=mushroom]').getBoundingClientRect().top")))))))
