@@ -17,4 +17,4 @@ jobs:
     - name: Run tests
       run: lein test
       env:
-        LIMO_REMOTE_SELENIUM_HUB_URL: http://localhost:4444/wd/hub/
+        LIMO_REMOTE_SELENIUM_HUB_URL: http://selenium:4444/wd/hub/
