@@ -9,6 +9,7 @@ jobs:
     services:
       selenium:
         image: selenium/standalone-chrome
+        options: -v /dev/shm:/dev/shm
 
     steps:
     - uses: actions/checkout@v1
