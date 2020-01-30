@@ -118,9 +118,7 @@
 (deftest implicit-scrolling-only-scrolls-if-needed
   (with-fresh-browser create-browser
     (window-resize {:width 780
-                    :height (if (remote-browser?)
-                              350 ;; remote browser includes chrome window in size, where chrome browser does not
-                              200)})
+                    :height 375})
     (to "http://httpbin.org/forms/post")
 
     (testing "does not scroll if on screen"
